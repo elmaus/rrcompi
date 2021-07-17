@@ -1,0 +1,27 @@
+{% extends "web/base.html" %}
+
+{% block content %}
+    <h3 class="text-center mb-5">{{comp_title}} Scoresheet</h3>
+    {% for e in entries  %}
+        <div class="card mb-3 shadow-sm">
+            <div class="card-header">
+                {{e.contender}}
+            </div>
+            <div class="card-body">
+                <h6 class="card-title">{{e.title}}</h6>
+                <div class="row g-1 mt-5">
+                    <div class='col-3'>
+                        <p class="my-auto">Average:</p>
+                    </div>
+                    <div class="col-4">
+                        <h5 class="text-danger my-auto">{{e.score}}</h5>
+                    </div>
+                    <a href="{% url 'compi-scoresheet' e.entry_id %}" class='btn btn-primary col-5'>
+                        Edit Score
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+
+{% endblock content %}

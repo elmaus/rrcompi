@@ -1,0 +1,64 @@
+{% extends "web/base.html" %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-header">
+            <h3 id='test'>{{contender}}<h3>
+        </div>
+        <div class="card-body">
+            <iframe frameborder="0" width="100%" height="125" src="{{link}}frame"></iframe>
+            <form method='POST'>
+                {% csrf_token %}
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th scope="col">Criteria</th>
+                            <th scope='col' colspan='3'>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in data %}
+                            <tr>
+                                <td>{{r.criteria}}
+                                <td class="per">{{r.percentage}} %</td>
+                                <td><input type='number' class='grade text-center' max='100' min='75' name="{{r.criteria}}" value={{r.score}} style="width:50px"/>
+                                <td class="score">{{r.score}}</td>
+                            </tr>
+                        {% endfor %}
+                        <tr>
+                            <td colspan='3'>Total</td>
+                            <td class='total'>0.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="form-group">
+                    <label class="form-label">Comment</label>
+                    <textarea class="form-control">
+                    </textarea>
+                </div>
+                <button class="btn btn-primary col-12 mt-4">Save Score</button>
+            </form>
+            <p>{{link}}</p>
+        </div>
+    </div>
+    <script>
+        let grade = document.querySelectorAll('.grade');
+        let per = document.querySelectorAll('.per');
+        let score = document.querySelectorAll('.score');
+        let total = document.querySelector('.total');
+        
+        function compute() {
+            let subTotal = 0
+            for (let i=0; i < grade.length; i++) {
+                let t = parseFloat(per[i].innerText) / 100 * grade[i].value;
+                subTotal += t;
+                score[i].innerText = t.toFixed(2);
+            }
+
+            total.innerText = subTotal.toFixed(2);
+            window.setInterval(compute, 1000)
+        }
+        compute()
+        
+    </script>
+{% endblock content %}

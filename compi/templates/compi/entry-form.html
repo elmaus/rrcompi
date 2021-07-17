@@ -1,0 +1,42 @@
+{% extends "web/base.html" %}
+
+{% block content %}
+    <div class='card shadow-sm rounded'>
+        
+        <div class='card-body'>
+            <h3 class="card-title mb-5">Entry Form for {{comp_title}}</h3>
+            {% if active_form == True %}
+                <form method='POST' enctype='multipart/form-data'>
+                    {% csrf_token %}
+                    <select class='form-select' name='comp'>
+                        <option hidden>Select Competition</option>
+                        {% for c in comps %}
+                            <option value={{c.id}}>{{c}}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="row g-1 mb-2">
+                        <div class="col-4"><label class="form-label">Entry Link</label></div>
+                        <div class='col-8'>
+                            <input type='link' class='form-control' name='link' required/>
+                        </div>
+                    </div>
+                    <div class='row g-1 mb-2'>
+                        <div class="col-4"><label class="form-label">Title</label></div>
+                        <div class='col-8'>
+                            <input type='text' class='form-control' name='title' required/>         
+                        </div>
+                    </div>
+                    <div class='row g-1 mb-2'>
+                        <div class="col-4"><label class="form-label">Smule Name</label></div>
+                        <div class='col-8'>
+                            <input type='text' class='form-control' name='smule-name' required/>         
+                        </div>
+                    </div>
+                    <button type="submit" name='entry-submit' class="btn btn-primary col-12 mt-3">Submit</button>
+                </form>
+            {% else %}
+                <h1 class="text-center my-5">Registration is closed</h1>
+            {% endif %}
+        </div>
+    </div>
+{% endblock content %}

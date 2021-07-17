@@ -1,0 +1,54 @@
+{% extends "web/base.html" %}
+
+{% block content %}
+    <div class='card shadow-sm rounded'>
+        <div class="card-header">
+            <h3 class="m-3 text-center">Judge Registration Form</h3>
+        </div>
+        {% if active_form == True %}
+            <form class="card-body py-5" method='POST' enctype='multipart/form-data'>
+                {% csrf_token %}
+                <select class="form-select mb-3" name='comp' required>
+                    <option hidden>Select Competition</option>
+                    {% for c in comp %}
+                        <option value="{{c.title}}">{{c.title}}</option>
+                    {% endfor %}
+                </select>
+                <div class="row g-1 mb-2">
+                    <div class="col-4"><label class="form-label">email</label></div>
+                    <div class='col-8'>
+                        <input type='email' class='form-control' name='email' required/>
+                    </div>
+                </div>
+                <div class='row g-1 mb-2'>
+                    <div class="col-4"><label class="form-label">Name</label></div>
+                    <div class='col-8'>
+                        <input type='text' class='form-control' name='name' required/>         
+                    </div>
+                </div>
+                <div class='row g-1 mb-2'>
+                    <div class="col-4"><label class="form-label">Password</label></div>
+                    <div class='col-8'>
+                        <input type='password' class='form-control' name='password1' required/>         
+                    </div>
+                </div>
+                <div class='row g-1 mb-2'>
+                    <div class="col-4"><label class="form-label">Confirm Password</label></div>
+                    <div class='col-8'>
+                        <input type='password' class='form-control' name='password2' required/>         
+                    </div>
+                </div>
+                <div class='row g-1 mb-2'>
+                    <div class="col-4"><label class="form-label">Photo</label></div>
+                    <div class='col-8'>
+                        <input type='file' class='form-control' name='image' required/>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Register</button>
+            </form>
+        {% else %}
+            <h1 class="text-center my-5">Registration is closed<h1>
+        {% endif %}
+    </div>
+    
+{% endblock content %}

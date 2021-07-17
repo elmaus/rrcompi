@@ -1,0 +1,14 @@
+{% extends "web/base.html" %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-header">
+            {{feature}}
+        </div>
+        <div class="card-body">
+            <h5 class="card-title">{{ctitle}}</h5>
+            <p class="card-text">{{message}}</p>
+            <a href="{% url linkto %}" class="btn btn-primary">OK</a>
+        </div>
+    </div>
+{% endblock content %}

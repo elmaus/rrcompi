@@ -1,0 +1,15 @@
+{% extends "web/base.html" %}
+
+{% block content %}
+    <h1>Result</h1>
+    {% for s in scores %}
+        <p>rank: {{s.rank}}</p>
+        <p>{{s.name}}</p>
+        <p>average: {{s.average}}</p>
+        {% for t in s.judges_score %}
+            <p>{{t.judge}}</p>
+            <p>{{t.score}}</p>
+        {% endfor %}
+    
+    {% endfor %}
+{% endblock content %}
