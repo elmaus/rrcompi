@@ -1,15 +1,42 @@
 {% extends "web/base.html" %}
 
 {% block content %}
-    <h1>Result</h1>
+    <h2 class="text-center pt-3 my-5">Result for {{comp_title}}</h2>
     {% for s in scores %}
-        <p>rank: {{s.rank}}</p>
-        <p>{{s.name}}</p>
-        <p>average: {{s.average}}</p>
-        {% for t in s.judges_score %}
-            <p>{{t.judge}}</p>
-            <p>{{t.score}}</p>
-        {% endfor %}
-    
+        <div class="card mb-5">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-4">
+                        <img src="http://127.0.0.1:8000/media/main/rrlogo.jpg" style="width:100px"/>
+                    </div>
+                    <div class="col-8">
+                        <h1 class="my-auto">Rank: {{s.rank}}</h1>
+                        <h4 class="card-title">{{s.name}}</h4>
+                        <h6>Average: {{s.average}}</h6>
+                    </div>
+                </div> 
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead class="table-dark">
+                            <tr>
+                                {% for j in judges %}
+                                    <th>{{j}}</th>
+                                {% endfor %}
+                            <tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                {% for t in s.judges_score %}
+                                    <th>{{t.score}}</th>
+                                {% endfor %}
+                            <tr>
+                        </tbody>
+                    </table>
+                </div>
+                <a href="{% url 'compi-result-info' s.entry_id %}" class="btn btn-primary d-block">View more info</a>
+            </div>
+        </div>
     {% endfor %}
 {% endblock content %}

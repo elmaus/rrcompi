@@ -18,5 +18,6 @@ urlpatterns = [
     path('register-judge/', register_judge, name='compi-register-judge'),
     path('entry-form/', entry_form, name='compi-entry-form'),
     path('submit-entry/<int:id>', submit_entry, name='compi-submit-entry'),
-    path('result/<int:id>', competition_result, name='compi-result')
+    path('result/<int:id>', competition_result, name='compi-result'),
+    path('result-info/<int:entry_id>', result_info, name='compi-result-info')
 ]

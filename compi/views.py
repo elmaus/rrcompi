@@ -349,6 +349,10 @@ def competition_result(request, id):
     all_score_by_judges = [] # for every entry/ 2 dimmentional list
     all_score_by_judges_ordered = []
 
+    judges_name = []
+    for j in judges:
+        judges_name.append(j.name)
+
     for contender in contenders:
         entry = Entry.objects.filter(contender=contender).first()
         if entry != None:
@@ -369,7 +373,8 @@ def competition_result(request, id):
             all_score_by_judges.append({
                 'name':contender.smule_name,
                 'average':round(average / len(judges), 2),
-                'judges_score':judges_scores
+                'judges_score':judges_scores,
+                'entry_id':entry.id
             })
 
     highest = None
@@ -396,9 +401,15 @@ def competition_result(request, id):
                 one['rank'] = i + 1
 
     context = {
-        'scores':all_score_by_judges_ordered
+        'scores':all_score_by_judges_ordered,
+        'judges':judges_name,
+        'comp_title':comp.title
     }
 
     return render(request, 'compi/competition-result.html', context)
 
+
+def result_info(request, entry_id):
+    print(entry_id)
+    return render(request, 'compi/result-info.html')
 
