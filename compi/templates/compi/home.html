@@ -4,7 +4,7 @@
     <h1 class="mb-5 mt-3 text-center">Competition Page</h1>
     <div class="accordion" id="accordionExample">
         <div class="accordion-item">
-            {% comment %} <h2 class="accordion-header" id="headingOne">
+            <h2 class="accordion-header" id="headingOne">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseTwo">
                     Entry Forms
                 </button>
@@ -12,22 +12,21 @@
             <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#accordionExample">
                 <div class="accordion-body">
                     {% for c in comps %}
-                        <a href="{% url 'compi-entry-form' c.id %}" style='text-decoration:none' class="text-dark d-block">{{c.title}}</a>
+                        <a href="{% url 'compi-submit-entry' c.id %}" style='text-decoration:none' class="text-dark d-block">{{c.title}}</a>
                     {% endfor %}
                 </div>
             </div>
-        </div> {% endcomment %}
+        </div>
         <div class="accordion-item">
             <h2 class="accordion-header" id="headingTwo">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                    RR Competition Forms
+                    Registration Forms
                 </button>
             </h2>
             <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#accordionExample">
                 <div class="accordion-body">
                     <a href="{% url 'compi-register-contender' %}" style='text-decoration:none' class="text-dark d-block mb-2">Contender Registration Form</a>
                     <a href="{% url 'compi-register-judge' %}" style='text-decoration:none' class="text-dark d-block mb-2">Judge Registration Form</a>
-                    <a href="{% url 'compi-entry-form' %}" style='text-decoration:none' class="text-dark d-block mb-2">Entry Submission Form</a>
                 </div>
             </div>
         </div>

@@ -4,12 +4,30 @@
     <div class='card shadow-sm rounded'>
         
         <div class='card-body'>
-            <h3 class="card-title mb-5">Entry Form for {{comp_title}}</h3>
+            <p id="deadline" class="text-center">{{deadline}}</p>
+            <div class="row g-1 m-5">
+                <div class="col-3">
+                    <h1 id="day" class='text-center'></h1>
+                    <p class='text-center'>DAY</p>
+                </div>
+                <div class="col-3">
+                    <h1 id="hour" class='text-center'></h1>
+                    <p class='text-center'>HOUR</p>
+                </div>
+                <div class="col-3">
+                    <h1 id="minute" class='text-center'></h1>
+                    <p class='text-center'>SEC</p>
+                </div>
+                <div class="col-3">
+                    <h1 id='second' class='text-center'></h1>
+                    <p class='text-center'>MIN</p>
+                </div>
+            </div>
             {% if active_form == True %}
-                <form method='POST' enctype='multipart/form-data'>
+                <form id="block" method='POST' enctype='multipart/form-data'>
                     {% csrf_token %}
-                    <select class='form-select' name='comp'>
-                        <option hidden>Select Competition</option>
+                    <select class='form-select mb-3' name='comp'>
+                        <option hidden>Select your Competition</option>
                         {% for c in comps %}
                             <option value={{c.id}}>{{c}}</option>
                         {% endfor %}
@@ -34,9 +52,64 @@
                     </div>
                     <button type="submit" name='entry-submit' class="btn btn-primary col-12 mt-3">Submit</button>
                 </form>
+                <h1 id="close" class="text-center my-5">Registration is closed</h1>
             {% else %}
                 <h1 class="text-center my-5">Registration is closed</h1>
             {% endif %}
         </div>
     </div>
+    <script>
+
+        function countdown() {
+
+            var now = new Date();
+            var dead = document.getElementById("deadline").innerText
+            var eventDate = new Date(dead);
+
+            var utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+
+            var currentTime = now.getTime();
+            var eventTime = eventDate.getTime();
+
+            var remTime = eventTime - currentTime;
+
+            var s = Math.floor(remTime / 1000);
+            var m = Math.floor(s/60);
+            var h = Math.floor(m/60);
+            var d = Math.floor(h/24);
+
+            h %= 24;
+            m %= 60;
+            s %= 60;
+
+            h = (h < 10) ? "0" + h : h;
+            m = (m < 10) ? "0" + m : m;
+            s = (s < 10) ? "0" + s : s;
+
+            if (d < 0) {
+                d = "0";
+                h = "00";
+                m = "00";
+                s = "00";
+                document.getElementById('block').style.display = 'none';
+                document.getElementById('close').style.display = 'block';
+
+            }
+
+            else {
+                document.getElementById('block').style.display = "block";
+                document.getElementById('close').style.display = 'none';
+
+            }
+
+            document.getElementById("day").innerText = d;
+            document.getElementById("hour").innerText = h;
+            document.getElementById("minute").innerText = m;
+            document.getElementById("second").innerText = s;
+
+            setTimeout(countdown, 1000);
+
+        }
+        countdown()
+    </script>
 {% endblock content %}

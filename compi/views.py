@@ -285,6 +285,62 @@ def entry_form(request):
     return render(request, 'compi/entry-form.html', context)
     
 
+def submit_entry(request, id):
+    active_form = FormsActivation.objects.all().first()
+    comp = Competition.objects.filter(id=id).first()
+    context = {
+        'active_form':active_form.entry_form,
+        'deadline':str(comp.submission_date).replace("pm", 'GMT+8')
+    }
+
+    if request.method == 'POST':
+        link = request.POST.get('link')
+        smule_name = request.POST.get('smule-name')
+        title = request.POST.get('title')
+        competition = request.POST.get('comp')
+
+        contender = Contender.objects.filter(smule_name=smule_name,  competition=comp).first()
+        if contender == None or contender.competition != comp:
+            context['title'] = 'Response'
+            context['feature'] = "Response"
+            context['ctitle'] = 'Submission Failed!'
+            context['message'] = "{} is not registered as contenders or no longer part of the competition. Please ask our Comp Coordinator for more information".format(smule_name)
+            context['linkto'] = 'compi-entry-form'
+            return render(request, 'compi/response.html', context)
+
+        already = Entry.objects.filter(contender=contender, competition=comp).first()
+        if already:
+            context['title'] = 'Response'
+            context['freature'] = 'Response'
+            context['ctitle'] = 'Submission Failed!'
+            context['message'] = 'You already submitted an entry. Please ask our Comp Coodinator for more info'
+            context['linkto'] = 'compi-entry-form'
+
+            return render(request, 'compi/response.html', context)
+
+        new_entry = Entry(link=link, title=title, contender=contender)
+        new_entry.save()
+
+        criterias = Criteria.objects.filter(competition=comp)
+        judges = Judge.objects.filter(competition=comp)
+        for j in judges:
+            for c in criterias:
+                score = Score(entry=new_entry, criteria=c, judge=j)
+                score.save()
+            new_comment = Comment(comment="Your comment here...", entry=new_entry, judge=j)
+            new_comment.save()
+        
+        context['title'] = 'Response'
+        context['feature'] = "Response"
+        context['ctitle'] = 'Submission Successful!'
+        context['message'] = "Your entry has been submited. Please ask our Comp Coordinator for more information".format(comp)
+        context['linkto'] = 'compi-home'
+        return render(request, 'compi/response.html', context)
+
+    return render(request, 'compi/entry-form.html', context)
+    
+
+
 def competition_result(request, id):
     comp = Competition.objects.filter(id=id).first()
     contenders = Contender.objects.filter(competition=comp)
