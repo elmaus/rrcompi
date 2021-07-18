@@ -73,6 +73,7 @@ def scoresheet(request, entry_id):
     comp = Competition.objects.filter(id=judge.competition.id).first()
     entry = Entry.objects.get(id=entry_id)
     scores = Score.objects.filter(entry=entry).filter(judge=judge)
+    comment = Comment.objects.filter(entry=entry, judge=judge).first()
     data = []
 
     if judge == None or judge.competition.id != comp.id:
@@ -91,19 +92,18 @@ def scoresheet(request, entry_id):
     context = {
         'data':data,
         'need_to_comment':judge.need_comment,
-        'comment':Comment.objects.filter(entry=entry, judge=judge).first(),
+        'comment':comment.comment,
         'link':entry.link.replace('?channel=Copy-Link', '') + '/',
         'contender':entry.contender,
     }
 
     if request.method == "POST":
         criterias = Criteria.objects.filter(competition=comp)
-        comment_qs = Comment.objects.filter(entry=entry, judge=judge).first()
 
         # updating judge's comment
         if judge.need_comment:
-            comment_qs.comment = request.POST.get('comment')
-            comment_qs.save()
+            comment.comment = request.POST.get('comment')
+            comment.save()
 
         #updating judge's scores
         for i in criterias:
