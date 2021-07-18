@@ -318,7 +318,7 @@ def submit_entry(request, id):
 
             return render(request, 'compi/response.html', context)
 
-        new_entry = Entry(link=link, title=title, contender=contender)
+        new_entry = Entry(link=link, title=title, contender=contender, competition=comp)
         new_entry.save()
 
         criterias = Criteria.objects.filter(competition=comp)
@@ -410,6 +410,38 @@ def competition_result(request, id):
 
 
 def result_info(request, entry_id):
-    print(entry_id)
-    return render(request, 'compi/result-info.html')
+    entry = Entry.objects.filter(id=entry_id).first()
+    comp = entry.competition
+    judges = Judge.objects.filter(competition=comp)
+    contender = entry.contender
+    scores = Score.objects.filter(entry=entry)
+
+    data = []
+    for judge in judges:
+        judge_scores = Score.objects.filter(entry=entry, judge=judge)
+        all_score = []
+        for score in judge_scores:
+            all_score.append({
+                'criteria':score.criteria.name,
+                'percentage':score.criteria.percentage,
+                'grade':score.score,
+                'score':score.criteria.percentage / 100 * score.score,
+            })
+        total = 0
+        for all in all_score:
+            total += all['score']
+        data.append({
+            'info':all_score,
+            'total':total
+        })
+    grand_total = 0
+    for d in data:
+        grand_total += d['total']
+    
+    data.appned(round(grand_total / len(data), 2))
+
+    # data[0] = information
+    # data[1] = average
+            
+    return render(request, 'compi/result-info.html',  {'data':data})
 
