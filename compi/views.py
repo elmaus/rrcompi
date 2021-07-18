@@ -327,7 +327,7 @@ def submit_entry(request, id):
             for c in criterias:
                 score = Score(entry=new_entry, criteria=c, judge=j)
                 score.save()
-            new_comment = Comment(comment="Your comment here...", entry=new_entry, judge=j)
+            new_comment = Comment(entry=new_entry, judge=j)
             new_comment.save()
         
         context['title'] = 'Response'
