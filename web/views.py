@@ -7,7 +7,11 @@ from django.contrib.auth import authenticate, get_user_model, login, logout
 from . models import *
 
 def home(request):
-    return render(request, 'web/home.html')
+    members = Member.objects.all()
+    context = {
+        "members":members
+    }
+    return render(request, 'web/home.html', context)
 
 
 def login_redirect(request):
