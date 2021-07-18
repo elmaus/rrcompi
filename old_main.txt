@@ -1,0 +1,2249 @@
+
+import os
+import wikipedia
+import random
+import base64
+import hashlib
+import hmac
+import time
+import urllib.request
+import json
+import rrlink
+import hugot
+import conversational as conv
+import keys as ky
+import command_response as cs
+
+from fuzzywuzzy import fuzz
+from fuzzywuzzy import process
+from flask import Flask, render_template, request, url_for, redirect, send_file, send_from_directory, abort
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, login_user, current_user, login_required, logout_user, UserMixin
+from werkzeug.utils import secure_filename
+from flask_fontawesome import FontAwesome
+
+from linebot import (LineBotApi, WebhookHandler)
+from linebot.exceptions import (InvalidSignatureError)
+from linebot.models import (MessageEvent, MemberJoinedEvent, MemberLeftEvent, TextMessage, TextSendMessage, ImageSendMessage, VideoSendMessage)
+
+import mtime
+
+BOT_NAME = 'ar-ar'
+x_char = ['"', '-', "?", '/', '+', '=', '<', '>', '&', '^', '$', '#', '!', '(', ')', '_', '[', ']', '{', '}', '*', '%', ':', ';', '`', '~']
+
+app = Flask(__name__)
+db = SQLAlchemy(app)
+fa = FontAwesome(app)
+
+line_bot_api = LineBotApi('Tym0PsZajbIq7ppVurid1SmGjlI/gJP+dQ5F2WZZQgYH5HLnOgnlUgj4AEtAashvpfUK3hz6s/QATgGeOHNVBTXbGBR0Qzvpk5cbTCqD/XaRJZFeaDCWmIZTzGfLRt8n58XHihdTCKbs5+VYCc7llQdB04t89/1O/w1cDnyilFU=')
+handler = WebhookHandler('49e4847c4cbc9d2b97eb2d92366a7ad3')
+
+image_dir = os.path.join(app.static_folder, 'images')
+os.makedirs(image_dir, exist_ok=True)
+
+member_badge = os.path.join(app.static_folder, 'member_badge')
+os.makedirs(member_badge, exist_ok=True)
+
+gallery_dir = os.path.join(app.static_folder, 'gallery')
+os.makedirs(gallery_dir, exist_ok=True)
+
+cont_profile = os.path.join(app.static_folder, 'contender_profile')
+os.makedirs(cont_profile, exist_ok = True)
+
+judges_profile = os.path.join(app.static_folder, 'judges_prifile')
+os.makedirs(judges_profile, exist_ok = True)
+
+member_profile = os.path.join(app.static_folder, 'member_profile')
+os.makedirs(member_profile, exist_ok = True)
+
+video_dir = os.path.join(app.static_folder, 'videos')
+os.makedirs(video_dir, exist_ok=True)
+
+video_entry_dir = os.path.join(app.static_folder, 'video_entry')
+os.makedirs(video_entry_dir, exist_ok=True)
+
+audio_dir = os.path.join(app.static_folder, 'audios')
+os.makedirs(audio_dir, exist_ok=True)
+
+ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'mp4', 'mov', 'gif', 'png']
+
+list_of_month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+app.config['SQLALCHEMY_TRACK_MODIFICATION'] = False
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///rhythmandrhymegroup.mysql.pythonanywhere-services.com'
+#app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
+app.config['SECRET_KEY'] = '1LoveCodin6'
+
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+class User(UserMixin, db.Model):
+    __tablename__ = "user"
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50))
+    password = db.Column(db.String(50))
+    kind = db.Column(db.String(50))
+    section = db.Column(db.String(50))
+
+class Members(db.Model):
+    __tablename__ = 'members'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50))
+    title = db.Column(db.String(50))
+    division = db.Column(db.String(50))
+    admission = db.Column(db.String(50))
+    smule = db.Column(db.String(50))
+    group = db.Column(db.String(50))
+    location = db.Column(db.String(100))
+    birthday = db.Column(db.String(50))
+    fav_song = db.Column(db.String(500))
+    picture = db.Column(db.String(1000))
+    bio = db.Column(db.String(1000))
+
+class MemberBadge(db.Model):
+    __tablename__ = 'member_badge'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50))
+    division = db.Column(db.String(50))
+    picture = db.Column(db.String(1000))
+
+class Contenders(db.Model):
+    __tablename__ = "contender"
+    id = db.Column(db.Integer, primary_key=True)
+    line_name = db.Column(db.String(50))
+    group = db.Column(db.String(50))
+    smule = db.Column(db.String(50))
+    picture = db.Column(db.String(100))
+
+class Judge(db.Model):
+    __tablename__ = "judge"
+    id = db.Column(db.Integer, primary_key= True)
+    name = db.Column(db.String(50))
+    username = db.Column(db.String(50))
+    password = db.Column(db.String(50))
+    picture = db.Column(db.String(50))
+    bio = db.Column(db.String(1000))
+
+class Entry(db.Model):
+    __tablename__ = "entry"
+    id = db.Column(db.Integer, primary_key=True)
+    line_name = db.Column(db.String(50), unique=True)
+    title = db.Column(db.String(50))
+    link = db.Column(db.String(1000))
+    frame = db.Column(db.String(1000))
+    submitted = db.Column(db.String(50))
+    ja = db.Column(db.String(20))
+    jb = db.Column(db.String(20))
+    jc = db.Column(db.String(20))
+    jd = db.Column(db.String(20))
+    je = db.Column(db.String(20))
+    comment1 = db.Column(db.String(1000))
+    comment2 = db.Column(db.String(1000))
+
+class BackupEntry(db.Model):
+    __tablename__ = "backupentry"
+    id = db.Column(db.Integer, primary_key=True)
+    line_name = db.Column(db.String(20))
+    link = db.Column(db.String(1000))
+    deleted = db. Column(db. String(100))
+    ja = db.Column(db.String(50))
+    jb = db.Column(db.String(50))
+    jc = db.Column(db.String(50))
+    jd = db.Column(db.String(50))
+    je = db.Column(db.String(50))
+
+class BackupEntries(db.Model):
+    __tablename__ = "backupentries"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(20))
+    comp = db.Column(db.String(200))
+    rnd = db.Column(db.Integer)
+    link = db.Column(db.String(1000))
+    comment1 = db.Column(db.String(1000))
+    comment2 = db.Column(db.String(1000))
+    per1 = db.Column(db.String(10))
+    per2 = db.Column(db.String(10))
+    per3 = db.Column(db.String(10))
+    ja = db.Column(db.String(50))
+    jb = db.Column(db.String(50))
+    jc = db.Column(db.String(50))
+    jd = db.Column(db.String(50))
+    je = db.Column(db.String(50))
+
+
+class CurrentComp(db.Model):
+    __tablename__ = "currentcomp"
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100))
+    tag = db.Column(db.String(1000))
+    round = db.Column(db.Integer)
+    banner = db.Column(db.String(1000))
+    deadline = db.Column(db.String(50))
+    announce = db.Column(db.String(50))
+    show = db.Column(db.String(10))
+    crit1 = db.Column(db.String(200))
+    crit2 = db.Column(db.String(200))
+    crit3 = db.Column(db.String(200))
+    per1 = db.Column(db.String(10))
+    per2 = db.Column(db.String(10))
+    per3 = db.Column(db.String(10))
+    ja = db.Column(db.String(20))
+    jb = db.Column(db.String(20))
+    jc = db.Column(db.String(20))
+    jd = db.Column(db.String(20))
+    je = db.Column(db.String(20))
+
+class RoundTimer(db.Model):
+    __tablename__ = 'roundtimer'
+    id = db.Column(db.Integer, primary_key=True)
+    deadline_round = db.Column(db.String(5))
+    announce_round = db.Column(db.String(5))
+
+class Mechanics(db.Model):
+    __tablename__ = 'mechanics'
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text)
+
+class Champions(db.Model):
+    __tablename__ = "champions"
+    id = db.Column(db.Integer, primary_key= True)
+    name = db.Column(db.String(50))
+    title = db.Column(db.String(50))
+    competition = db.Column(db.String(50))
+    date = db.Column(db.String(50))
+
+class Picture(db.Model):
+    __tablename__ = 'picture'
+    id = db.Column(db.Integer, primary_key = True)
+    picture = db.Column(db.String(1000))
+    description = db.Column(db.String(1000))
+    category = db.Column(db.String(50))
+
+class QA(db.Model):
+	__tablename__ = "qa"
+	id = db.Column(db.Integer, primary_key=True)
+	question = db.Column(db.String(1000))
+	answer = db.Column(db.String(1000))
+
+class Hugot(db.Model):
+	__tablename__ = "hugot"
+	id = db.Column(db.Integer, primary_key=True)
+	hugot = db.Column(db.String(1000))
+
+class Hugot_Ni(db.Model):
+	__tablename__ = 'hugot_ni'
+	id = db.Column(db.Integer, primary_key=True)
+	name = db.Column(db.String(10))
+	hugot = db.Column(db.String(100))
+
+class Joke(db.Model):
+	__tablename__ = 'joke'
+	id = db.Column(db.Integer, primary_key=True)
+	joke = db.Column(db.String(1000))
+
+class Pick_Up(db.Model):
+	__tablename__ = 'pick_up'
+	id = db.Column(db.Integer, primary_key=True)
+	question = db.Column(db.String(50))
+	answer = db.Column(db.String(100))
+
+class NewDisplayName(db.Model):
+    __tablename__ = 'newdisplayname'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(200))
+    new_name = db.Column(db.String(30))
+
+class RegisteredRoom(db.Model):
+    __tablename__ = 'registeredroom'
+    id = db.Column(db.Integer, primary_key=True)
+    room_name = db.Column(db.String(20))
+    room_id = db.Column(db.String(100))
+
+class ChatBotOwner(db.Model):
+    __tablename__ = "lineid"
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(20))
+    user_id = db.Column(db.String(100))
+
+class Notes1(db.Model):
+    __tablename__ = 'notes1'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(50))
+    content = db.Column(db.String(5000))
+
+class Result:
+    def __init__(self, badge, name, a, b, c, d, e, total):
+        self.badge = badge
+        self.name = name
+        self.ja = "%.2f" % a
+        self.jb = "%.2f" % b
+        self.jc = "%.2f" % c
+        self.jd = "%.2f" % d
+        self.je = "%.2f" % e
+        self.total = total
+        self.rank = 1
+
+class DataResult:
+    def __init__(self, id, name, a, b, c, d, e, total):
+        self.id = id
+        self.name = name
+        self.ja = "%.2f" % a
+        self.jb = "%.2f" % b
+        self.jc = "%.2f" % c
+        self.jd = "%.2f" % d
+        self.je = "%.2f" % e
+        self.total = total
+        self.rank = 1
+
+def scoreinfo(name, comp, rnd, link, comment1, comment2, per1, per2, per3, a, b, c, d, e):
+    a = list(map(lambda x: float(x), a.split('-')))
+    b = list(map(lambda x: float(x), b.split('-')))
+    c = list(map(lambda x: float(x), c.split('-')))
+    d = list(map(lambda x: float(x), d.split('-')))
+    e = list(map(lambda x: float(x), e.split('-')))
+    ja = ["%.2f" % float(a[0]*per1), "%.2f" % float(a[1]*per2), "%.2f" % float(a[2]*per3)]
+    jb = ["%.2f" % float(b[0]*per1), "%.2f" % float(b[1]*per2), "%.2f" % float(b[2]*per3)]
+    jc = ["%.2f" % float(c[0]*per1), "%.2f" % float(c[1]*per2), "%.2f" % float(c[2]*per3)]
+    jd = ["%.2f" % float(d[0]*per1), "%.2f" % float(d[1]*per2), "%.2f" % float(d[2]*per3)]
+    je = ["%.2f" % float(e[0]*per1), "%.2f" % float(e[1]*per2), "%.2f" % float(e[2]*per3)]
+    tc1 = "%.2f" % ((a[0] + b[0] + c[0] + d[0] + e[0]) / 5)
+    tc2 = "%.2f" % ((a[1] + b[1] + c[1] + d[1] + e[1]) / 5)
+    tc3 = "%.2f" % ((a[2] + b[2] + c[2] + d[2] + e[2]) / 5)
+    tp1 = "%.2f" % (float(tc1) * per1)
+    tp2 = "%.2f" % (float(tc2) * per2)
+    tp3 = "%.2f" % (float(tc3) * per3)
+    total = "%.2f" % (float(tp1) + float(tp2) + float(tp3))
+
+    info = {"name":name, "ja":ja, "jb":jb, "jc":jc, "jd":jd, "je":je,
+    "a":a, "b":b, "c":c, "d":d, "e":e, "tc1":tc1, "tc2":tc2, "tc3":tc3,
+    "tp1":tp1, "tp2":tp2, "tp3":tp3, "total":total, "link":link,
+    "comment1":comment1, "comment2":comment2, 'comp':comp, 'rnd':rnd}
+    return info
+
+
+def rank(a, b, reverse=False):
+    result = None
+
+    list1 = b
+    if reverse == False:
+        list1.sort(reverse=True)
+    else:
+        list1.sort()
+
+    list2 = list(dict.fromkeys(list1))
+    for i in range(len(list2)):
+        if a == list2[i]:
+            result = i+1
+
+    return result
+
+
+def allowed_file(filename):
+    ext = filename.split('.')[1].lower()
+    if ext in ALLOWED_EXTENSIONS:
+        return True
+    else:
+        return False
+
+def get_smule_frame(text):
+    first = text.split(" ")[4]
+    iframe = first.split('"')[1]
+    return iframe
+
+def get_smule_link(text):
+    first = text.split("www.smule.com")
+    link = first[-1]
+    return link
+
+def get_filename(text):
+    a = random.randint(0, 99)
+    b = random.randint(0, 99)
+    c = random.randint(0, 99)
+    d = "{}-{}-{}-{}".format(text, a, b, c)
+    return d
+
+@app.route('/copy_members', methods=['POST', 'GET'])
+def copy_members():
+    members = Members.query.all()
+
+    dict = []
+    for m in members:
+        if m.division != "Former Member":
+            dict.append({
+                "name":m.name,
+                "title":m.title,
+                "division":m.division,
+                "admission":m.admission,
+                "smule":m.smule,
+                "group":m.group,
+                "location":m.location,
+                "birthday":m.birthday,
+                "favorite":m.fav_song,
+                "picture":m.picture,
+                "bio":m.bio
+            })
+
+    with open('member.txt', 'w') as jason_file:
+        json.dump(dict, jason_file, indent=4)
+    return "copied"
+
+@app.route('/copy_champions', methods=['POST', 'GET'])
+def copy_champions():
+    champions = Champions.query.all()
+
+    champ = []
+    for c in champions:
+        champ.append(
+            {
+                "name":c.name,
+                "title":c.title,
+                "competition":c.competition,
+                "date":c.date
+            }
+        )
+
+    with open('champions.txt', 'w') as json_file:
+        json.dump(champ, json_file, indent=4)
+
+    return "copied!"
+
+@app.route('/copy_qa', methods=['POST', 'GET'])
+def copy_qa():
+    qa = QA.query.all()
+
+    qlist = []
+
+    for q in qa:
+        qlist.append(
+            {
+                "question":q.question,
+                "answer":q.answer
+            }
+        )
+
+    with open('qa.text', 'w') as json_file:
+        json.dump(qlist, json_file, indent=4)
+
+    return "qa copied!"
+
+@app.route('/copy_notes', methods=['GET', 'POST'])
+def copy_notes():
+    notes = Notes1.query.all()
+
+    note = []
+
+    for n in notes:
+        note.append(
+            {
+                "title":n.title,
+                "content":n.content
+            }
+        )
+
+    with open('notes.txt', 'w') as json_file:
+        json.dump(note, json_file, indent=4)
+
+    return "notes copied!"
+
+@app.route('/copy_chatbotowner', methods= ['GET', 'POST'])
+def copy_chatbotowner():
+    owner = ChatBotOwner.query.all()
+
+    own = []
+    for o in owner:
+        own.append(
+            {
+                "username":o.username,
+                "user_id":o.user_id
+            }
+        )
+
+    with open('chatbotowner.txt', 'w') as json_file:
+        json.dump(own, json_file, indent=4)
+
+    return "chat bot owner copied!"
+
+@app.route('/copy_registered_room', methods= ['GET', 'POST'])
+def copy_registered_room():
+    rooms = RegisteredRoom.query.all()
+    room = []
+    for r in rooms:
+        room.append(
+            {
+                "room_name":r.room_name,
+                "room_id":r.room_id
+            }
+        )
+    with open('registered_room.txt', 'w') as json_file:
+        json.dump(room, json_file, indent=4)
+
+    return "registered room copied!"
+
+@app.route('/copy_hugot_ni', methods= ['GET', 'POST'])
+def copy_hugot_ni():
+    hugots = Hugot_Ni.query.all()
+    hugot = []
+    for h in hugots:
+        hugot.append(
+            {
+                "name":h.name,
+                "hugot":h.hugot
+            }
+        )
+    with open('hugot_ni.txt', 'w') as json_file:
+        json.dump(hugot, json_file, indent=4)
+
+    return "hugot ni copied!"
+
+
+@app.route('/')
+def home():
+    title='HOME - Rhythm and Rhyme'
+    return render_template('index.html', title=title)
+
+@app.route('/about')
+def about():
+    title='ABOUT - Rhythm and Rhyme'
+    return render_template('about.html', title=title)
+
+@app.route('/event', methods=['GET'])
+def event():
+    title="EVENT - Rhythm and Rhyme"
+    comp = CurrentComp.query.filter_by(id=1).first()
+    mech = Mechanics.query.filter_by(id=1).first()
+    round_timer = RoundTimer.query.filter_by(id=1).first()
+    return render_template('event-page.html', title=title, mech=mech, comp=comp, rt=round_timer)
+
+@app.route('/members', methods=['GET'])
+def members():
+    title='MEMBERS'
+    members = 'members'
+    return render_template('index.html', title=title, members=members)
+
+@app.route('/top_5', methods=['GET'])
+def top_5():
+    title = 'TOP 5 - Rhythm and Rhyme'
+    top = Members.query.filter_by(division='Top 5').all()
+    return render_template('division/top5.html', title=title, top=top)
+
+@app.route('/officer', methods=['GET'])
+def officer():
+    title = 'OFFICERS - Rhythm and Rhyme'
+    officer = Members.query.filter_by(division='Officer').all()
+    return render_template('division/officer.html', title=title, officers=officer)
+
+@app.route('/pioneer', methods=['GET'])
+def pioneer():
+    title = 'PIONEERS - Rhythm and Rhyme'
+    pioneer = Members.query.filter_by(division='Pioneer').all()
+    return render_template('division/pioneer.html', title=title, pioneers=pioneer)
+
+@app.route('/loyal', methods=['GET'])
+def loyal():
+    title = 'LOYALS - Rhythm and Rhyme'
+    loyal = Members.query.filter_by(division='Loyal').all()
+    return render_template('division/loyal.html', title=title, loyal=loyal)
+
+@app.route('/comrade', methods=['GET'])
+def comrade():
+    title = 'FAMILY - Rhytm and Rhyme'
+    comrade = Members.query.filter_by(division='Member').all()
+    return render_template('division/comrade.html', title=title, comrade=comrade)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    title = "LOGIN - Rhythm and Rhyme"
+    user = User.query.filter_by(username=request.form.get("username")).first()
+    pw = request.form.get("password")
+
+    if request.method == 'POST':
+        if user and user.password == pw:
+            login_user(user, remember=request.form.get("check"))
+            if current_user.kind == "admin":
+                pass
+            if current_user.kind == "registrar":
+                pass
+            if current_user.kind == "judge":
+                return redirect(url_for("score_sheet"))
+        else:
+            info = "Login Failed!"
+            message = " Please ask any Rythm and Rhyme officer for assistance."
+            return render_template('responses/response.html', info=info, message=message)
+
+    return render_template('registration/login.html', title=title)
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('home'))
+
+@app.route("/download_badge", methods=["GET", "POST"])
+def download_badge():
+    title = "DOWNLOAD BADGE - Rhythm and Rhyme"
+    top5 = MemberBadge.query.filter_by(division="Top 5").all()
+    officer = MemberBadge.query.filter_by(division="Officer").all()
+    pioneer = MemberBadge.query.filter_by(division="Pioneer").all()
+    loyal = MemberBadge.query.filter_by(division="Loyal").all()
+    member = MemberBadge.query.filter_by(division="Member").all()
+
+    if request.method == "POST":
+        file = request.form.get("download")
+
+        return send_from_directory("static/member_badge", file, as_attachment=True)
+
+    return render_template("download_badge.html", title=title, top5=top5, officer=officer, pioneer=pioneer, loyal=loyal, member=member)
+
+@app.route("/append_champion", methods=["POST", "GET"])
+def append_champion():
+    title = "APPEND CHAMPION"
+    if request.method == "POST":
+        name = request.form.get("name")
+        title = request.form.get("title")
+        competition = request.form.get("competition")
+        date = request.form.get("date")
+
+        new = Champions(name=name, title=title, competition=competition, date=date)
+        db.session.add(new)
+        db.session.commit()
+        db.session.rollback()
+
+        message = " {} has been added to the list.".format(name)
+
+        return render_template("admin/append_champion_response.html", title=title, message=message)
+
+    return render_template("admin/append_champion.html", title=title)
+
+@app.route("/view_champions", methods=['POST', 'GET'])
+def view_champions():
+    title = "TOP 5 WINNERS DATABASE - Rhythm and Rhyme"
+    champions = Champions.query.order_by(Champions.name).all()
+
+    if request.method == "POST":
+        if request.form.get("filter") == "Title":
+            champions = Champions.query.order_by(Champions.title).all()
+            fil = "Title"
+            return render_template("view_champions.html", title=title, fil=fil, champions=champions)
+        if request.form.get("filter") == "Competition":
+            champions = Champions.query.order_by(Champions.competition).all()
+            fil= "Competition"
+            return render_template("view_champions.html", title=title, fil=fil, champions=champions)
+        if request.form.get("filter") == "Name":
+            champions = Champions.query.order_by(Champions.name).all()
+            fil="Name"
+            return render_template("view_champions.html", title=title, fil=fil, champions=champions)
+        if request.form.get("filter") =="Id":
+            champions = Champions.query.order_by(Champions.id).all()
+            fil = "Id"
+            return render_template("view_champions.html", title=title, fil=fil, champions=champions)
+
+    return render_template("view_champions.html", title=title, fil="Name", champions=champions)
+
+@app.route("/badge_test", methods=['POST', 'GET'])
+def badge_test():
+    badges = MemberBadge.query.all()
+    names = ""
+
+    for b in badges:
+        names += "{}-{}\n".format(b.name, b.picture)
+    return names
+
+@app.route("/view_member_badge", methods=['POST', 'GET'])
+def view_member_badge():
+    title = "UPLAOD BADGE - Rhythm and Rhyme"
+    members = Members.query.all()
+    badges = MemberBadge.query.all()
+    if request.method == "POST":
+        name = request.form.get('name')
+        member = Members.query.filter_by(name=name).first()
+        if request.form.get('edit') == "add":
+            file = request.files['file']
+            if file == "":
+                pass
+            if file and allowed_file(file.filename):
+                file_name = "{}-badge.{}".format(get_filename(name), file.filename.split('.')[-1])
+                filename = file_name.replace(" ","_")
+                file.save(os.path.join(member_badge, secure_filename(filename)))
+
+                new = MemberBadge(name=name, division=member.division, picture=filename)
+                db.session.add(new)
+                db.session.commit()
+
+                message = "{}'s badge has been added".format(name)
+                return render_template('admin/upload-badge-response.html', title=title, message=message)
+
+        else:
+            nm = request.form.get('edit').split('-')[0]
+            func = request.form.get('edit').split("-")[1]
+
+
+            b = MemberBadge.query.filter_by(name=nm).first()
+            if func == "change":
+                return render_template("admin/change_member_badge.html", title=title, name=b.name)
+            else:
+                return render_template("admin/delete_badge_confirm.html", title=title, badge=b)
+
+    return render_template("admin/view-member-badge.html", title=title, members=members, badges=badges)
+
+@app.route("/delete_member_badge", methods=["POST"])
+def delete_member_badge():
+    title= "DELETE BADGE - Rhythm and Rhyme"
+    if request.method == "POST":
+        name = request.form.get("delete")
+        message = "{}'s badge has been deleted".format(name)
+        badge = MemberBadge.query.filter_by(name=name).first()
+        db.session.delete(badge)
+        db.session.commit()
+        db.session.rollback()
+        return render_template("admin/delete_member_badge_response.html", title=title, message=message)
+
+@app.route("/change_member_badge", methods=["POST"])
+def change_member_badge():
+    title = "CHANGE BADGE - Rhythm and Rhyme"
+    if request.method == "POST":
+        name = request.form.get("edit")
+        message = "{}'s badge has been changed".format(name)
+        badge = MemberBadge.query.filter_by(name=name).first()
+        file = request.files["file"]
+        if file == "":
+            pass
+        if file and allowed_file(file.filename):
+            file_name = "{}-badge.{}".format(get_filename(name), file.filename.split('.')[-1])
+            filename = file_name.replace(" ", "_")
+            file.save(os.path.join(member_badge, secure_filename(filename)))
+            #os.remove("static/member_badge/{}".format(badge.picture))
+            badge.picture = filename
+            db.session.commit()
+
+            return render_template("admin/change_member_badge_response.html", title=title, message=message)
+
+@app.route('/member_registration', methods=["GET", "POST"])
+def member_registration():
+    title = 'NEW MEMBERS REGISTRATION - Rhytm and Rhyme'
+    month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    day = [d for d in range(1, 32)]
+
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        old = Members.query.filter_by(name=name).first()
+        smule = request.form.get('smule')
+        group = request.form.get('group')
+
+        month = request.form.get('month')
+        day = request.form.get('day')
+        birthday = '{} {}'.format(month, day)
+        song = request.form.get('song')
+        location = request.form.get('location')
+        bio = request.form.get('bio')
+
+        title = 'Member'
+        division = 'Pending'
+        admission = mtime.now()
+
+        if 'file' not in request.files:
+            return render_template('response.html')
+        file = request.files['file']
+        if file.filename == '':
+            return render_template('response.html')
+        if file and allowed_file(file.filename):
+            file_name = '{}.{}'.format(get_filename(name), file.filename.split('.')[-1])
+            filename = file_name.replace(" ", "_")
+            if filename and not old:
+                file.save(os.path.join(member_profile, secure_filename(filename)))
+
+                new = Members(name=name, title=title, division=division, admission=admission, smule=smule, group=group, location=location, birthday=birthday, fav_song=song, picture=filename, bio=bio)
+                db.session.add(new)
+                db.session.commit()
+                new2 = MemberBadge(name=name, division=division, picture='')
+                db.session.add(new2)
+                db.session.commit()
+
+                return render_template('responses/regis_member_response.html', title='MEMBER REGISTRATION', name=name.split(' ')[0])
+            else:
+                info = "Registration Failed"
+                message = 'Please ask any Rhythm and Rhyme officers for assistance'
+                return render_template('responses/response.html', title='MEMBER REGISTRATION', info=info, message=message)
+
+        else:
+            info = "Registration Failed"
+            message = 'Please ask any Rhythm and Rhyme officers for assistance'
+            return render_template('responses/response.html', title='MEMBER REGISTRATION')
+
+    return render_template('registration/member_registration.html', title=title, month=month, day=day)
+
+@app.route("/edit_member", methods=["GET", "POST"])
+def edit_member():
+    title = "EDIT MEMBER INFO"
+    all = Members.query.all()
+
+
+    if request.method == "POST":
+        if request.form.get("submit") == "edit":
+            member = request.form.get("member")
+            target = Members.query.filter_by(name=member).first()
+
+            name = request.form.get("name")
+            target.name = name
+
+            title = request.form.get("title")
+            target.title = title
+
+            smule = request.form.get("smule")
+            target.smule = smule
+
+            birthday = request.form.get("birthday")
+            target.birthday = birthday
+
+            division = request.form.get("division")
+            target.division = division
+
+            admission = request.form.get("admission")
+            target.admission = admission
+
+            location = request.form.get("location")
+            target.location = location
+
+            bio = request.form.get("bio")
+            target.bio = bio
+
+            fav_song = request.form.get("fav_song")
+            target.fav_song = fav_song
+
+            file = request.files['file']
+            if file.filename== "":
+                pass
+            if file and allowed_file(file.filename):
+                file_name = "{}.{}".format(get_filename(name), file.filename.split('.')[-1])
+                filename = file_name.replace(" ", "_")
+                if filename:
+                    os.remove("static/member_profile/{}".format(target.picture))
+                    file.save(os.path.join(member_profile, secure_filename(filename)))
+                    target.picture = filename
+
+
+            db.session.commit()
+            message = "{} info has been updated".format(name)
+
+            return render_template("admin/edit-member-response.html", message=message)
+
+
+    return render_template('admin/find_member.html', title=title, all=all)
+
+@app.route("/delete_member", methods=["POST"])
+def delete_member():
+    if request.method == "POST":
+        name = request.form.get("delete")
+        if name == "back":
+            return redirect(url_for("view_members"))
+        else:
+            message = "{} is deleted".format(name)
+            target = Members.query.filter_by(name=name).first()
+            os.remove("static/member_profile/{}".format(target.picture))
+            db.session.delete(target)
+            db.session.commit()
+            return render_template("admin/edit-member-response.html", message=message)
+
+@app.route("/edit", methods=["POST", "GET"])
+def edit():
+    if request.method == "POST":
+        func = request.form.get("edit").split("-")[0]
+        name = request.form.get("edit").split("-")[1]
+        target = Members.query.filter_by(name=name).first()
+        if func == "delete":
+            return render_template('admin/delete-member-confirm.html', target=target)
+        if func == "edit":
+            return render_template('admin/edit_member.html', target=target)
+
+@app.route('/view_members', methods=['GET'])
+def view_members():
+    title = "MEMBERS DATA - Rhythm and Rhyme"
+    top5 = len(Members.query.filter_by(division="Top 5").all())
+    officer = len(Members.query.filter_by(division="Officer").all())
+    pioneer = len(Members.query.filter_by(division="Pioneer").all())
+    loyal = len(Members.query.filter_by(division="Loyal").all())
+    member = len(Members.query.filter_by(division="Member").all())
+    totmem = top5 + officer + loyal + pioneer + member
+    members = Members.query.all()
+
+    return render_template('admin/view-members.html', title=title, members=members, top5=top5, officer=officer, pioneer=pioneer, loyal=loyal, member=member, totmem=totmem)
+
+
+@app.route("/register_judge", methods=['GET', 'POST'])
+def register_judge():
+    title = "JUDGE REGISTRATION FORM - Rhythm and Rhyme"
+    invalid_file = " Invalid File!"
+    ask = " Please ask any Rhythm and Rhyme officers for assiatance"
+    reg_failed = "Registration Failed"
+
+    if request.method == "POST":
+        name = request.form.get('name')
+        old = Judge.query.filter_by(name=name).first()
+        username = request.form.get('username')
+        password = request.form.get('password')
+        bio = request.form.get('bio')
+
+        if 'file' not in request.files:
+            return render_template('responses/response.html')
+        file = request.files['file']
+        if file.filename == "":
+            return render_template('responses/response.html', info=invalid_file, mesaage=ask)
+        if file and allowed_file(file.filename):
+            file_name = "{}-{}.{}".format(name, mtime.now(), file.filename.split('.')[-1])
+            filename = file_name.replace(" ", "_")
+            if filename and not old:
+                file.save(os.path.join(judges_profile, secure_filename(filename)))
+
+                new = Judge(name=name, username=username, password=password, picture=filename, bio=bio)
+                db.session.add(new)
+                db.session.commit()
+
+                info = " Registration Success!"
+                message = " Thanks for being a part of Rhythm and Rhyme competition."
+                return render_template('responses/response.html', info=info, message=message)
+            else:
+                return render_template('responses/response.html', info=reg_failed, message=ask)
+        else:
+            return render_template('responses/response.html', info=invalid_file, message=ask)
+    return render_template('registration/judges-registration.html', title=title)
+
+@app.route("/create_judge_user", methods=['POST', 'GET'])
+def create_judge_user():
+    jb = User(username="judge_b", password="judge_b", kind="judge", section="judge_b")
+    db.session.add(jb)
+    jc = User(username="judge_c", password="judge_c", kind="judge", section="judge_c")
+    db.session.add(jc)
+    jd = User(username="judge_d", password="judge_d", kind="judge", section="judge_d")
+    db.session.add(jd)
+    je = User(username="judge_e", password="judge_e", kind="judge", section="judge-e")
+    db.session.add(je)
+
+    db.session.commit()
+    return "success!!!"
+
+@app.route("/view_judges_info", methods=['GET', 'POST'])
+def view_judges_info():
+    title = "JUDGES INFO - Rhythm and Rhyme"
+    judges = Judge.query.all()
+    return render_template("admin/judges_info.html", title=title, judges=judges)
+
+
+@app.route("/edit_judges", methods=['GET', 'POST'])
+def edit_judges():
+    title='EDIT JUDGES - Rhythm and Rhyme'
+    comp = CurrentComp.query.filter_by(id=1).first()
+    judges = Judge.query.all()
+
+    if request.method == 'POST':
+
+        judge_a = User.query.filter_by(section="judge_a").first()
+        judge_b = User.query.filter_by(section="judge_b").first()
+        judge_c = User.query.filter_by(section="judge_c").first()
+        judge_d = User.query.filter_by(section="judge_d").first()
+        judge_e = User.query.filter_by(section="judge_e").first()
+
+        j_a = Judge.query.filter_by(name=request.form.get("ja")).first()
+        j_b = Judge.query.filter_by(name=request.form.get("jb")).first()
+        j_c = Judge.query.filter_by(name=request.form.get("jc")).first()
+        j_d = Judge.query.filter_by(name=request.form.get("jd")).first()
+        j_e = Judge.query.filter_by(name=request.form.get("je")).first()
+
+        judge_a.username = j_a.username
+        judge_a.password = j_a.password
+        comp.ja = j_a.name
+
+        judge_b.username = j_b.username
+        judge_b.password = j_b.password
+        comp.jb = j_b.name
+
+        judge_c.username = j_c.username
+        judge_c.password = j_c.password
+        comp.jc = j_c.name
+
+        judge_d.username = j_d.username
+        judge_d.password = j_d.password
+        comp.jd = j_d.name
+
+        judge_e.username = j_e.username
+        judge_e.password = j_e.password
+        comp.je = j_e.name
+
+        db.session.commit()
+
+        message = "Judges Updated"
+        return render_template('admin/admin-response.html', title = 'Response', message=message)
+
+    return render_template('admin/edit-judges.html', title=title, comp=comp, judges=judges)
+
+
+
+@app.route("/edit_comp", methods=['GET', 'POST'])
+def edit_comp():
+    title="CREATE COMPETITION  - Rhythm and Rhyme"
+    comp = CurrentComp.query.filter_by(id=1).first()
+    round_timer = RoundTimer.query.filter_by(id=1).first()
+    mech = Mechanics.query.filter_by(id=1).first()
+    judges = Judge.query.all()
+    contenders = Entry.query.all()
+
+    months = ["January", "February", "March", "April", " May",
+    "June", "July", "August", "September", "October", "November",  "December"]
+
+    days = [d for d in range(1, 32)]
+    round_numbers = [n for n in range(1, 15)]
+
+    dead_time = comp.deadline.split(" ")[3]
+    ann_time = comp.announce.split(" ")[3]
+
+    dead_date = {"month":comp.deadline.split(" ")[0],
+    "day":comp.deadline.split(" ")[1].replace(',',''),
+    "year":comp.deadline.split(" ")[2],
+    "hour":dead_time.split(":")[0],
+    "minute":dead_time.split(":")[1],
+    "second":dead_time.split(":")[2]}
+
+    ann_date = {"month":comp.announce.split(" ")[0],
+    "day":comp.announce.split(" ")[1],
+    "year":comp.announce.split(" ")[2],
+    "hour":ann_time.split(":")[0],
+    "minute":ann_time.split(":")[1],
+    "second":ann_time.split(":")[2]}
+
+
+    if request.method == 'POST':
+        if request.form.get('submit') == 'banner':
+            file = request.files['file']
+            if file.filename== "":
+                pass
+            if file and allowed_file(file.filename):
+                file_name = "{}.{}".format(get_filename(comp.title), file.filename.split('.')[-1])
+                filename = file_name.replace(" ", "_")
+                if filename:
+                    #os.remove("static/images/{}".format(comp.banner))
+                    file.save(os.path.join(image_dir, secure_filename(filename)))
+                    comp.banner = filename
+
+                    db.session.commit()
+
+        if request.form.get("submit") == "title-btn":
+            comp.title = request.form.get('title')
+            comp.tag = request.form.get('tag')
+            comp.round = request.form.get('round')
+
+            db.session.commit()
+
+        elif request.form.get("submit") == "deadline":
+            d_month = request.form.get("d-month")
+            d_day = request.form.get("d-day")
+            d_year = request.form.get("d-year")
+            d_hour = request.form.get("d-hour")
+            d_minute = request.form.get("d-minute")
+            d_seconds = request.form.get("d-second")
+
+            comp.deadline = "{} {} {} {}:{}:{} GMT+8".format(d_month, d_day, d_year, d_hour, d_minute, d_seconds)
+
+            a_month = request.form.get("a-month")
+            a_day = request.form.get("a-day")
+            a_year = request.form.get("a-year")
+            a_hour = request.form.get("a-hour")
+            a_minute = request.form.get("a-minute")
+            a_seconds = request.form.get("a-second")
+
+            comp.announce = "{} {} {} {}:{}:{} GMT+8".format(a_month, a_day, a_year, a_hour, a_minute, a_seconds)
+
+            deadline_round = request.form.get('deadline_round')
+            announce_round = request.form.get('announce_round')
+
+            round_timer.deadline_round = deadline_round
+            round_timer.announce_round = announce_round
+
+            db.session.commit()
+
+        elif request.form.get("submit") == "criteria":
+            comp.crit1 = request.form.get("crit1")
+            comp.crit2 = request.form.get("crit2")
+            comp.crit3 = request.form.get("crit3")
+            comp.per1 = request.form.get("per1")
+            comp.per2 = request.form.get("per2")
+            comp.per3 = request.form.get("per3")
+
+            db.session.commit()
+
+        elif request.form.get('submit') == 'mechanics':
+            mec = Mechanics.query.filter_by(id=1).first()
+
+            mec.content = request.form.get('mech')
+            db.session.commit()
+
+        message = "Competition Updated"
+        return render_template('admin/admin-response.html', title = 'Response', message=message)
+
+    return render_template('admin/comp-panel.html', title=title, comp=comp, mech=mech, judges=judges, contenders=contenders, months=months, days=days, ann=ann_date, dead=dead_date, rt=round_timer, round_numbers=round_numbers)
+
+
+@app.route('/view_contenders', methods=['GET', 'POST'])
+def view_contenders():
+    title = 'VIEW CONTENDERS - Rhythm and Rhyme'
+    contenders = Contenders.query.all()
+    return render_template('admin/view_contenders.html', title=title, contenders=contenders)
+
+
+@app.route('/edit_entry', methods=[ 'GET', 'POST'])
+def edit_entry():
+    title = "EDIT ENTRY"
+    entries = Entry.query.all()
+    if request.method == 'POST':
+        name = request.form.get('delete')
+        target = Entry.query.filter_by(line_name=name).first()
+        return render_template('admin/delete-entry-confirm.html', target=target)
+    return render_template('admin/delete-entry.html', title=title, entries=entries)
+
+@app.route('/delete_entry', methods=['POST'])
+def delete_entry():
+    if request.method == "POST":
+        name = request.form.get('delete')
+        message = '{} has been deleted!'.format(name)
+        comp = CurrentComp.query.filter_by(id=1).first()
+        d = Entry.query.filter_by(line_name=name).first()
+
+        new = BackupEntries(name = d.line_name, link=d.link, comp=comp.title, rnd=comp.round, per1=comp.per1, per2=comp.per2, per3=comp.per3, ja=d.ja, jb=d.jb, jc=d.jc, jd=d.jd, je=d.je)
+        db.session.add(new)
+
+        db.session.delete(d)
+        db.session.commit()
+        db.session.rollback()
+        return render_template('admin/edit-entry-response.html', message=message)
+
+@app.route('/register_contender', methods=['GET', "POST"])
+def register_contender():
+    title = "CONTENDERS REGISTRATION - Rhythm and Rhyme"
+    comp = CurrentComp.query.filter_by(id=1).first()
+
+    if request.method == "POST":
+        name = request.form.get('name')
+        group = request.form.get('group')
+        smule = request.form.get('smule')
+
+        old = Contenders.query.filter_by(line_name=name).first()
+        if 'file' not in request.files:
+            return render_template('response.html')
+        file = request.files['file']
+        if file.filename == '':
+            return render_template('response.html')
+        if file and allowed_file(file.filename):
+            filename = '{}-{}.{}'.format(group, smule, file.filename.split('.')[-1])
+            if filename and not old:
+                file.save(os.path.join(cont_profile, secure_filename(filename)))
+
+                new = Contenders(line_name=name, group=group, smule=smule, picture=filename)
+                db.session.add(new)
+                db.session.commit()
+
+                info = "You are now registered for {} competition.".format("RRVSS2")
+                message = "Please refer to our Comp. Coordinator and Officers for more info."
+                return render_template('responses/response.html', title=title, info=info, message=message)
+            else:
+                info = 'You are already registered for this competition'
+                message = "Please refer to our Comp. Coordinator and Officers for assistance."
+                return render_template('responses/response.html', title=title, info=info, message=message)
+        else:
+            info = 'Invalid file!'
+            message = "Please check your file."
+            return render_template('responses/response.html', title=title, info=info, message=message)
+
+    return render_template('registration/register_contender.html', title=title, comp=comp)
+
+@app.route('/submit_entry', methods=['GET', 'POST'])
+def submit_entry():
+    title = "ENTRY SUBMISSION - Rhythm and Rhyme"
+    comp = CurrentComp.query.filter_by(id=1).first()
+    contenders = Contenders.query.all()
+
+    if request.method == 'POST':
+        registered = []
+        for contender in contenders:
+            registered.append(contender.line_name)
+
+        name = request.form.get("name")
+        cont = Entry.query.filter_by(line_name=name).first()
+        if name in registered:
+            if not cont:
+                title = request.form.get("title")
+                link = get_smule_link(request.form.get("link"))
+                frame = ""
+                submitted = mtime.now()
+                ja = "0.00-0.00-0.00"
+                jb = "0.00-0.00-0.00"
+                jc = "0.00-0.00-0.00"
+                jd = "0.00-0.00-0.00"
+                je = "0.00-0.00-0.00"
+                comment1 = 'comment'
+                comment2 = 'comment'
+
+                new = Entry(line_name=name, title=title, link=link, frame=frame, submitted=submitted, ja=ja, jb=jb, jc=jc, jd=jd, je=je, comment1=comment1, comment2=comment2)
+                db.session.add(new)
+                db.session.commit()
+                info = " Your entry has been submitted!"
+                message = " The result of the competition for this round will be posted on {}.".format(comp.announce)
+                return render_template("responses/response.html", title=title, info=info, message=message)
+            else:
+                info = "You have already submited an entry!"
+                message = "If you have not yet submitted your entry, please ask any Rhythm and Rhyme officers for assistance."
+                return render_template("responses/response.html", title=title, info=info, message=message)
+        else:
+            info = "Submission have been blocked!"
+            message = "You are not/no longer registered to participate in this competition. Please refer to any Rhythm and Rhyme officers for assistance."
+            return render_template("responses/response.html", title=title, info=info, message=message)
+
+    return render_template('registration/entry_form.html', title=title, comp=comp)
+
+
+
+
+@app.route('/score_sheet', methods=['GET', 'POST'])
+@login_required
+def score_sheet():
+    title='SCORE SHEET - Rhythm and Rhyme'
+    comp = CurrentComp.query.filter_by(id=1).first()
+    contenders = Entry.query.all()
+
+    def total(text):
+        x = list(text.split('-'))
+        per1 = float(comp.per1[:-1]) / 100
+        per2 = float(comp.per2[:-1]) / 100
+        per3 = float(comp.per3[:-1]) / 100
+        tot = (float(x[0]) * per1) + (float(x[1]) * per2) + (float(x[2]) * per3)
+        return tot
+
+
+    if request.method == "POST":
+        name = request.form.get("name")
+        cont = Entry.query.filter_by(line_name=name).first()
+
+        old_score = None
+        if current_user.section == 'judge_a':
+            old_score = cont.ja.split("-")
+        if current_user.section == "judge_b":
+            old_score = cont.jb.split("-")
+        if current_user.section == "judge_c":
+            old_score = cont.jc.split("-")
+        if current_user.section == "judge_d":
+            old_score = cont.jd.split("-")
+        if current_user.section == "judge_e":
+            old_score = cont.je.split("-")
+
+        return render_template("score-sheet.html", contender=cont, score=old_score, comp=comp)
+
+    if current_user.kind == 'judge':
+        if current_user.section == "judge_a":
+            all = []
+            judge = Judge.query.filter_by(username=current_user.username).first()
+            picture = secure_filename(judge.picture)
+            for i in range(len(contenders)):
+                name = contenders[i].line_name
+                badge = Contenders.query.filter_by(line_name=name).first().picture
+                contender = {"badge":badge, "no":i+1,"name":name, "total":total(contenders[i].ja)}
+                all.append(contender)
+            return render_template("sheet_list.html", title=title, contenders=all, comp=comp, picture=picture)
+        elif current_user.section == "judge_b":
+            all = []
+            judge = Judge.query.filter_by(username=current_user.username).first()
+            picture = secure_filename(judge.picture)
+            for i in range(len(contenders)):
+                name = contenders[i].line_name
+                badge = Contenders.query.filter_by(line_name=name).first().picture
+                contender = {"badge":badge, "no":i+1,"name":contenders[i].line_name, "total":total(contenders[i].jb)}
+                all.append(contender)
+            return render_template("sheet_list.html", title=title, contenders=all, comp=comp, picture=picture)
+        elif current_user.section == "judge_c":
+            all = []
+            judge = Judge.query.filter_by(username=current_user.username).first()
+            picture = secure_filename(judge.picture)
+            for i in range(len(contenders)):
+                name = contenders[i].line_name
+                badge = Contenders.query.filter_by(line_name=name).first().picture
+                contender = {"badge":badge, "no":i+1,"name":contenders[i].line_name, "total":total(contenders[i].jc)}
+                all.append(contender)
+            return render_template("sheet_list.html", title=title, contenders=all, comp=comp, picture=picture)
+        elif current_user.section == "judge_d":
+            all = []
+            judge = Judge.query.filter_by(username=current_user.username).first()
+            picture = secure_filename(judge.picture)
+            for i in range(len(contenders)):
+                name = contenders[i].line_name
+                badge = Contenders.query.filter_by(line_name=name).first().picture
+                contender = {"badge":badge, "no":i+1,"name":contenders[i].line_name, "total":total(contenders[i].jd)}
+                all.append(contender)
+            return render_template("sheet_list.html", title=title, contenders=all, comp=comp, picture=picture)
+        else:
+            all= []
+            judge = Judge.query.filter_by(username=current_user.username).first()
+            picture = secure_filename(judge.picture)
+            for i in range(len(contenders)):
+                name = contenders[i].line_name
+                badge = Contenders.query.filter_by(line_name=name).first().picture
+                contender = {"badge":badge, "no":i+1,"name":contenders[i].line_name, "total":total(contenders[i].je)}
+                all.append(contender)
+
+            return render_template("sheet_list.html", title=title, contenders=all, comp=comp, picture=picture)
+    else:
+        info = "You are not logged in as Judge"
+        message = "Please ask any Rhythm and Rhyme officers for assistance or just log in as judge"
+        return render_template('responses/response.html', title=title, info=info, message=message)
+
+
+@app.route('/save_score', methods=['GET', 'POST'])
+@login_required
+def save_score():
+    title = "SCORE SHEET - Rhythm and Rhyme"
+
+    if request.method == "POST":
+        name = request.form.get("name")
+        contender = Entry.query.filter_by(line_name=name).first()
+
+        crit1 = float(request.form.get("crit1"))
+        crit2 = float(request.form.get("crit2"))
+        crit3 = float(request.form.get("crit3"))
+        score = "{}-{}-{}".format(crit1, crit2, crit3)
+
+        if current_user.section == "judge_a":
+            comment1 =  request.form.get('comment1')
+            contender.ja = score
+            contender.comment1 = comment1
+            db.session.commit()
+            return redirect(url_for("score_sheet"))
+
+        if current_user.section == "judge_b":
+            comment2 = request.form.get('comment2')
+            contender.jb = score
+            contender.comment2 = comment2
+            db.session.commit()
+            return redirect(url_for("score_sheet"))
+
+        if current_user.section == "judge_c":
+            contender.jc = score
+            db.session.commit()
+            return redirect(url_for("score_sheet"))
+
+        if current_user.section == "judge_d":
+            contender.jd = score
+            db.session.commit()
+            return redirect(url_for("score_sheet"))
+
+        if current_user.section == "judge_e":
+            contender.je = score
+            db.session.commit()
+            return redirect(url_for("score_sheet"))
+
+
+    if current_user.kind == "judge":
+        return render_template("scoresheet.html", title=title, contender=contender)
+    else:
+        info = " You are not registered as judge"
+        message = " Please ask any Rhythm and Rhyme officers for assistance"
+        return render_template('responses/response.html', title=title, info=info, message=message)
+
+
+@app.route("/view_data_entries", methods=['GET', 'POST'])
+def view_data_entries():
+    title = 'VEIW DATE ENTRIES - Rhythm and Rhyme'
+    entries = BackupEntries.query.all()
+    numrnd = [x for x in range(1, 10)]
+    comps = ['RRVSS2']
+    if request.method == 'POST':
+        rnd = int(request.form.get('rnd'))
+        comp = request.form.get('comp')
+        entries = db.session.query(BackupEntries).filter(BackupEntries.rnd == rnd).filter(BackupEntries.comp == comp).all()
+        #entries = BackupEntries.query.filter_by(rnd=rnd).all()
+        if entries:
+            per1 = float(entries.per1.replace("%", "")) / 100
+            per2 = float(entries.per2.replace("%", "")) / 100
+            per3 = float(entries.per3.replace("%", "")) / 100
+
+            contenders = []
+            for con in entries:
+                ja = (float(con.ja.split('-')[0]) * per1) + (float(con.ja.split('-')[1]) * per2) + (float(con.ja.split('-')[2]) * per3)
+                jb = (float(con.jb.split('-')[0]) * per1) + (float(con.jb.split('-')[1]) * per2) + (float(con.jb.split('-')[2]) * per3)
+                jc = (float(con.jc.split('-')[0]) * per1) + (float(con.jc.split('-')[1]) * per2) + (float(con.jc.split('-')[2]) * per3)
+                jd = (float(con.jd.split('-')[0]) * per1) + (float(con.jd.split('-')[1]) * per2) + (float(con.jd.split('-')[2]) * per3)
+                je = (float(con.je.split('-')[0]) * per1) + (float(con.je.split('-')[1]) * per2) + (float(con.je.split('-')[2]) * per3)
+                total = "%.2f" % ((ja + jb + jc + jd + je) / 5)
+                contender = Result(con.id, con.name, ja, jb, jc, jd, je, total)
+                contenders.append(contender)
+
+            for i in range(len(contenders)):
+                all_total = []
+                for all in contenders:
+                    all_total.append(all.total)
+
+                contenders[i].rank = rank(contenders[i].total, all_total)
+
+            return render_template("view-data-enties-result.html", title=title, contenders=contenders)
+        else:
+            info = "There is no data for the {} round {}".format(comp, rnd)
+            message = " Please ask any Rhythm and Rhyme officers for assistance"
+            return render_template('responses/response.html', title=title, info=info, message=message)
+
+    return render_template('view-data-entries.html', title=title, round=numrnd, comps=comps)
+
+@app.route("/view_data_entiry", methods=['GET', 'POST'])
+def view_data_entry():
+    title = 'DATA ENRTRY RESULT - Rhythm and Rhyme'
+    id = request.form.get("get")
+    entry = BackupEntries.query.filter_by(id=id).first()
+    info = scoreinfo(entry.name, entry.link, entry.comp, entry.rnd, entry.comment1, entry.comment2,
+    entry.per1, entry.per2, entry.per3, entry.ja, entry.jb, entry.jc, entry.jd, entry.je)
+
+    return render_template("data-entry-score-info.html", title=title, score=info, entry=entry)
+
+
+@app.route("/result", methods=['GET', 'POST'])
+def result():
+    title = "RESULT - Rhythm and Rhyme"
+    entries = Entry.query.all()
+    comp = CurrentComp.query.filter_by(id=1).first()
+    round_timer = RoundTimer.query.filter_by(id=1).first()
+    per1 = float(comp.per1.replace("%", "")) / 100
+    per2 = float(comp.per2.replace("%", "")) / 100
+    per3 = float(comp.per3.replace("%", "")) / 100
+
+    contenders = []
+    for con in entries:
+        badge = Contenders.query.filter_by(line_name=con.line_name).first().picture
+        ja = (float(con.ja.split('-')[0]) * per1) + (float(con.ja.split('-')[1]) * per2) + (float(con.ja.split('-')[2]) * per3)
+        jb = (float(con.jb.split('-')[0]) * per1) + (float(con.jb.split('-')[1]) * per2) + (float(con.jb.split('-')[2]) * per3)
+        jc = (float(con.jc.split('-')[0]) * per1) + (float(con.jc.split('-')[1]) * per2) + (float(con.jc.split('-')[2]) * per3)
+        jd = (float(con.jd.split('-')[0]) * per1) + (float(con.jd.split('-')[1]) * per2) + (float(con.jd.split('-')[2]) * per3)
+        je = (float(con.je.split('-')[0]) * per1) + (float(con.je.split('-')[1]) * per2) + (float(con.je.split('-')[2]) * per3)
+        total = "%.2f" % ((ja + jb + jc + jd + je) / 5)
+        contender = Result(badge, con.line_name, ja, jb, jc, jd, je, total)
+        contenders.append(contender)
+
+    for i in range(len(contenders)):
+        all_total = []
+        for all in contenders:
+            all_total.append(all.total)
+
+        contenders[i].rank = rank(contenders[i].total, all_total)
+
+    if request.method == "POST":
+        name = request.form.get("get")
+        con = Entry.query.filter_by(line_name=name).first()
+        info = scoreinfo(name, comp.title, comp.round, con.link, con.comment1, con.comment2, per1, per2, per3, con.ja, con.jb, con.jc, con.jd, con.je)
+
+        return render_template("score-info.html", title=title, score=info, comp=comp)
+
+    return render_template("result.html", title=title, contenders=contenders, comp=comp, rt=round_timer)
+
+
+@app.route("/admin_result", methods=['GET', 'POST'])
+def admin_result():
+    title = "ADMIN RESULT - Rhythm and Rhyme"
+    entries = Entry.query.all()
+    comp = CurrentComp.query.filter_by(id=1).first()
+    per1 = float(comp.per1.replace("%", "")) / 100
+    per2 = float(comp.per2.replace("%", "")) / 100
+    per3 = float(comp.per3.replace("%", "")) / 100
+
+    contenders = []
+    for con in entries:
+        badge = Contenders.query.filter_by(line_name=con.line_name).first().picture
+        ja = (float(con.ja.split('-')[0]) * per1) + (float(con.ja.split('-')[1]) * per2) + (float(con.ja.split('-')[2]) * per3)
+        jb = (float(con.jb.split('-')[0]) * per1) + (float(con.jb.split('-')[1]) * per2) + (float(con.jb.split('-')[2]) * per3)
+        jc = (float(con.jc.split('-')[0]) * per1) + (float(con.jc.split('-')[1]) * per2) + (float(con.jc.split('-')[2]) * per3)
+        jd = (float(con.jd.split('-')[0]) * per1) + (float(con.jd.split('-')[1]) * per2) + (float(con.jd.split('-')[2]) * per3)
+        je = (float(con.je.split('-')[0]) * per1) + (float(con.je.split('-')[1]) * per2) + (float(con.je.split('-')[2]) * per3)
+        total = "%.2f" % ((ja + jb + jc + jd + je) / 5)
+        contender = Result(badge, con.line_name, ja, jb, jc, jd, je, total)
+        contenders.append(contender)
+
+    for i in range(len(contenders)):
+        all_total = []
+        for all in contenders:
+            all_total.append(all.total)
+
+        contenders[i].rank = rank(contenders[i].total, all_total)
+
+    if request.method == "POST":
+        name = request.form.get("get")
+        con = Entry.query.filter_by(line_name=name).first()
+        info = scoreinfo(name, comp.title, comp.round, con.link, con.comment1, con.comment2, per1, per2, per3, con.ja, con.jb, con.jc, con.jd, con.je)
+
+        return render_template("admin/admin_score-info.html", title=title, score=info, comp=comp)
+
+    return render_template("admin/admin_result.html", title=title, contenders=contenders)
+
+
+
+
+@app.route('/gallery2', methods=['GET', 'POST'])
+def gallery2():
+    title = 'GALLERY - Rhythmand Rhyme'
+
+    if request.method == 'POST':
+        cat = request.form.get('cathegory')
+        album = Picture.query.filtar_by(category=cat).all()
+
+        return render_template('album.html', title=cat, album=album)
+
+    return render_template('gallery.html', title=title)
+
+@app.route('/upload_picture', methods=['POST', 'GET'])
+def upload_picture():
+    title = 'UPLOAD IMAGE - Rhythm and Rhyme'
+    categories = ['Meet Ups', 'Achievements', 'Recognitions', 'Activities']
+    if request.method == 'POST':
+        cat = request.form.get('category')
+        description = request.form.get('desc')
+
+
+        file = request.files['file']
+        if file.filename == "":
+            message = "Problem with file"
+            return render_template('admin/admin-response.tml', message=message)
+        if file and allowed_file(file.filename):
+            file_name = "{}-{}".format(cat, file.filename)
+            file_name2 = file_name.replace(" ", "_")
+            filename = file_name2.replace(",", "")
+            if filename:
+                file.save(os.path.join(gallery_dir, secure_filename(filename)))
+
+                new = Picture(picture=filename, description=description, category=cat)
+                db.session.add(new)
+                db.session.commit()
+                message = "Image uplaoded for {}".format(cat)
+                return render_template('admin/admin-upload-picture-response.html', title=title, message=message)
+
+    return render_template('admin/upload-picture.html', title=title, categories=categories)
+
+@app.route('/admin_page', methods=['GET'])
+def admin_page():
+    title = "ADMIN PAGE - Rhythm and Rhyme"
+    return render_template('admin/admin_page.html', title=title)
+
+@app.route('/gallery', methods=['GET'])
+def gallery():
+    title="GALLERY - Rhythm and Rhyme"
+    meetups = Picture.query.filter_by(category="Meet Ups").first()
+    achievements = Picture.query.filter_by(category="Achievements").first()
+    recognitions = Picture.query.filter_by(category="Recognition").first()
+    activities = Picture.query.filter_by(category="Activities").first()
+    return render_template("gallery.html", title=title, meetups=meetups, recognitions=recognitions, achievements=achievements, activities=activities)
+
+@app.route('/recognition_gallery', methods=['GET'])
+def recognition_gallery():
+    title=" RECOGNITION - Rhythm and Rhyme"
+    recognitions = Picture.query.filter_by(category="Recognitions").all()
+    return render_template('recognition-gallery.html', title=title, recognitions=recognitions)
+
+@app.route('/meet_ups_gallery', methods=['GET'])
+def meet_ups_gallery():
+    title="MEET UPS - Rhythm and Rhyme"
+    meetups = Picture.query.filter_by(category="Meet Ups").all()
+    return render_template("meet_ups_gallery.html", title=title, meetups=meetups)
+
+@app.route('/achievements_gallery', methods=['GET'])
+def achievements_gallery():
+    title="ACHIEVEMENTS - Rhythm and Rhyme"
+    achievements = Picture.query.filter_by(category="Achievements").all()
+    return render_template("achievements_gallery.html", title=title, achievements=achievements)
+
+@app.route('/activities_gallery', methods=['GET'])
+def activities_gallery():
+    title=" ACTIVITIES - Rhythm and Rhyme"
+    activities = Picture.query.filter_by(category="Activities").all()
+    return render_template("activities_gallery.html", title=title, activities=activities)
+
+@app.route('/testing', methods=['POST', 'GET'])
+def testing():
+    comp = CurrentComp.query.filter_by(id=1).first()
+    comp.deadline = "January 20, 2020 00:00:00 GMT+8"
+    db.session.commit()
+    return comp.deadline
+
+def get_badge(name):
+    try:
+        name1 = ky.keynames[name]
+        member = MemberBadge.query.filter_by(name=name1).first()
+        return "https://www.rhythmandrhyme.club/static/member_badge/{}".format(member.picture)
+    except:
+        return "None"
+
+def get_rr_link(keyword):
+    links = []
+    for key in rrlink.link:
+        links.append(key)
+    if keyword in links:
+        return rrlink.link[keyword]
+    else:
+        return "None"
+
+def get_word(keyword):
+
+    mer_key = '045d604a-5c73-43eb-af0d-27c2b6853c46'
+
+    api_url = 'https://www.dictionaryapi.com/api/v3/references/thesaurus/json/{}?key='.format(keyword) + mer_key
+
+    try:
+
+        get_dict = urllib.request.urlopen(api_url)
+        read_dict = get_dict.read()
+
+        result = json.loads(read_dict.decode('utf-8'))
+
+        #stems = result[0]['meta']['stems']
+        #syns = result[0]['meta']['syns']
+        #word = result[0]['hwi']['hw']
+        #parts = result[0]['fl'] # example: noun
+        #defin = result[0]['def'][0]['sseq'][0][0][1]['dt'][1]
+        use = result[0]['def'][0]['sseq'][0][0][1]['dt'][1][1][0]['t']
+        #rel =result[0]['def'][0]['sseq'][0][0][1]
+        definition = result[0]['shortdef'][0]
+
+        ans1 = '{}\n\nEx:\n{}'.format(definition, use).replace('{it}', '"')
+        ans2 = ans1.replace('{/it}', '"')
+        return ans2
+    except:
+        return 'None'
+
+
+def get_weather(city_name):
+    api_key = '4cf236918b37ce8acb0629ea43ebabc0'
+    api_url = 'https://api.openweathermap.org/data/2.5/weather?q={}&appid={}'.format(city_name, api_key)
+
+    try:
+        get_weather = urllib.request.urlopen(api_url)
+        read_weather = get_weather.read()
+
+        get_weather = urllib.request.urlopen(api_url)
+        read_weather = get_weather.read()
+
+        result = json.loads(read_weather.decode('utf-8'))
+
+        description = result['weather'][0]['description']
+        temp = "%.2f" % (float(result['main']['temp']) - 273.15)
+        country = result['sys']['country']
+        city = result['name']
+
+        # - 273.15
+
+        ans = 'The weather in {} {} is {} with the temperature of {}° Celsius'.format(city, country, description.upper(), temp)
+        return ans
+
+    except:
+        return 'None'
+
+
+
+def get_keynames():
+    names = ""
+    for key in ky.keynames:
+        names += (key + "\n")
+    return names
+
+def get_wiki(text):
+    try:
+        result = wikipedia.summary(text, sentences=3)
+        return result
+    except:
+        result = wikipedia.search(text)
+        lists = ""
+        for i in result:
+            lists += "{}\n".format(i)
+        #return  "Give me specific topic from the list below:\n\n{}".format(text)
+        return "Sorry, I don't know much about {}".format(text)
+
+# this function check if the command as a trained chat response is valid or available
+def check_valid_command(text):
+
+    keys = text.split(' ')
+
+    if keys[1] == 'link':
+        link = cs.links[keys[2]][keys[3]]
+        if link:
+            return True
+        else:
+            return False
+    elif keys[1] == 'image':
+        return True if text.replace('@ image ', '') in cs.image else False
+    elif keys[1] == 'text':
+        return True if text.replace('@ text ', '') in cs.text else False
+    elif keys[1] == 'note':
+        return True if text.replace('@ note ', '') in cs.note else False
+
+    else:
+        pass
+
+
+
+
+def learn_qa(text): #rr learn chat is already removed
+    c = text.split('/')
+
+    if len(c) == 2:
+        if 'creator' in c[0]:
+            return 'Sensitive element in the content'
+        else:
+            q1 = c[0]
+            for i in x_char:
+                q1 = q1.replace(i, '')
+            question = ' '.join(q1.split(' '))
+
+            a1 = c[1].split(' ')
+            answer = ' '.join(a1)
+
+            if answer[0] == "@":
+
+                if not check_valid_command(answer):
+                    return 'No data for {}!'.format(answer)
+                else:
+                    pass
+
+
+            quest = QA.query.filter_by(question=question).first()
+            if quest:
+                if quest.answer[0] != '@':
+                    quest.answer = answer
+                    db.session.commit()
+                    return 'Got it!'
+                else:
+                    return "Training Restricted!\n\nPrimary command can't be changed"
+            else:
+                new = QA(question = question, answer=answer)
+                db.session.add(new)
+                db.session.commit()
+                return 'Got it!'
+
+
+    else:
+        return 'Wrong format!\n\nEx:\nrr learn chat: your chat or question/the response or answer'
+
+def learn_hugot(text): # rr learn hugot is already removed
+    new = Hugot(hugot=text)
+    db.session.add(new)
+    db.session.commit()
+    return 'Hugot learned!'
+
+def learn_hugot_ni(message):
+    text = message.split(' ')
+    if text[4][-1] == ':':
+        name = text[4].replace(':', '')
+        hugots = ' '.join(text[5:])
+        hugotero = Hugot_Ni.query.filter_by(name=name.lower()).first()
+        if hugotero:
+            hugotero.hugot = hugots
+            db.session.commit()
+            return "Hugot ni {} learned!".format(name)
+        else:
+            new = Hugot_Ni(name=name.lower(), hugot=hugots)
+            db.session.add(new)
+            db.session.commit()
+            return "Hugot ni {} learned!".format(name)
+    else:
+        return "Wrong Format!\n\nEx:\nrr learn hugot ni name: your hugot"
+
+def get_qa_answer(text):
+    all_q = QA.query.all()
+
+    question = text
+    for i in x_char:
+        question = question.replace(i, '')
+
+    quest = ' '.join(question.split(' '))
+    bank = list(map(lambda a: fuzz.partial_ratio(quest, a.question), all_q))
+    status = max(bank)
+    index = bank.index(status)
+
+    if bank[index] > 75:
+        return all_q[index].answer
+    else:
+        return "None-1234"
+
+def arithmetic(exp):
+    try:
+        res = exp.replace('x', '*')
+        res1 = res.replace('^', '**')
+        res2 = res1.replace(' ', '')
+
+        result = eval(res2)
+        return "{} = {}".format(exp, result, random.choice(conv.response["pos"]))
+    except:
+        return "None-1234"
+
+
+def get_lyrics(text):
+    song = text.replace(' ', '_')
+    try:
+        api_url = 'https://api.lyrics.ovh/v1/{}'.format(song)
+        get_lyrics = urllib.request.urlopen(api_url)
+        read_lyrics = get_lyrics.read()
+
+        result = json.loads(read_lyrics.decode('utf-8'))
+        return result['lyrics']
+    except:
+        return "Sorry, I don't have lyrics for that artist and song title..."
+
+def get_quote():
+
+    api_url = 'https://quote-garden.herokuapp.com/api/v2/quotes/random'
+    get_quote = urllib.request.urlopen(api_url)
+    read_quote = get_quote.read()
+
+    result = json.loads(read_quote.decode('utf-8'))
+    quote = result['quote']['quoteText']
+    author = result['quote']['quoteAuthor']
+    return '{}\n\n- {}'.format(quote, author)
+    # except:
+    #     return "Try again!"
+
+# registering user id and assigning alias name to user for bot's recognition
+# command sample: rr call me 'name you want to call'
+def save_new_display_name(user_id, name):
+    user = NewDisplayName.query.filter_by(user_id=user_id).first()
+    if user:
+        user.new_name = name
+        db.session.commit()
+    else:
+        new = NewDisplayName(user_id=user_id, new_name=name)
+        db.session.add(new)
+        db.session.commit()
+    return 'From now on, I will call you, "{}"'.format(name)
+
+# registering chat room as bot's teritory
+# chat command sample: rr @register_room as chat room name
+def register_room_id(room_id, room_name, user_id):
+    owners = ChatBotOwner.query.filter_by(user_id=user_id).first()
+    if owners:
+        old_room = RegisteredRoom.query.filter_by(room_name=room_name).first()
+        if old_room:
+            old_room.room_name = room_name
+            db.session.commit()
+        else:
+            new_room = RegisteredRoom(room_name=room_name, room_id=room_id)
+            db.session.add(new_room)
+            db.session.commit()
+        return "This chat room is now registered".format(room_name)
+    else:
+        return "Request restricted!, unauthorize user for command!"
+
+def command_text_response():
+    pass
+
+def command_link_response(response):
+    text = response.split(' ')[1]
+    if text == 'slap':
+        return
+
+def get_link_from_command(text, room_id):
+    keys = text.split(' ')
+
+    if keys[2] == "private":
+        # getting the list of allowed rooms
+        rooms = cs.links[keys[2]][keys[3]]["rooms"]
+        try:
+            room = RegisteredRoom.query.filter_by(room_id=room_id).first()
+            if room.room_name in rooms: # allowed
+                return cs.links[keys[2]][keys[3]]["link"]
+            else:
+                return "Your are in wrong chat room to get the requested information!"
+        except: # not allowed
+            return "Your are in wrong chat room to get the requested information!"
+    else:
+        return cs.links[keys[2]][3]["link"]
+
+def register_user(command, owner_id):
+    # rr @register_me as name
+    owner = ChatBotOwner.query.filter_by(user_id=owner_id).first()
+    if owner:
+        keys = command.split(' ')
+        name = keys[4]
+        user_id = keys[2]
+
+        new = ChatBotOwner(username=name, user_id=user_id)
+        db.session.add(new)
+        db.session.commit()
+        return "User Id registered!\n\nName: {}\nUser Id: {}".format(name, user_id)
+    else:
+        return "Unauthorised User for this command!"
+
+# to save note: rr save_note: title/space, tab, content
+def save_note(message):
+    text = message.split('@content:')
+
+    title = None
+    for x in range(len(text[0])):
+        if text[0][x] == ':':
+            new_text = text[0][x+1:].split(' ')
+            title = ' '.join(list(filter(lambda x: x != '', new_text)))
+            break
+    content = text[1]
+
+    new_note = Notes1(title=title, content=content)
+    db.session.add(new_note)
+    db.session.commit()
+
+    return '"{}" has been saved'.format(title)
+
+def get_note(text, room_id):
+    registered = RegisteredRoom.query.filter_by(room_id=room_id).first()
+
+    if registered:
+        title = ' '.join(text.split(' ')[2:])
+        notes = Notes1.query.filter_by(title=title).first()
+        if notes:
+            key = text.replace('@ note ', '')
+            if key in cs.note:
+                if registered.room_name in cs.note[key]['rooms']:
+                    return '{}\n\n{}'.format(notes.title, notes.content)
+                else:
+                    return 'Unauthorized chat room to give you information about {}'.format(title)
+            else:
+                return 'No data for {}'.format(text)
+        else:
+            return "Can't find notes for {}".format(title)
+    else:
+        return 'Unauthorized chat room to give you information about "{}"'.format(title)
+    pass
+
+
+@app.route('/callback', methods=['POST'])
+def callback():
+    body = request.get_data(as_text=True)
+
+    signature = request.headers['X-Line-Signature']
+
+    try:
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        pass
+
+@handler.add(MemberJoinedEvent)
+def handle_member_join(event):
+    link = "https://www.rhythmandrhyme.club/static/bot_photos/welcome-banner.jpg"
+    line_bot_api.reply_message(event.reply_token, ImageSendMessage(original_content_url=link, preview_image_url=link))
+
+
+
+@handler.add(MessageEvent, message=TextMessage)
+def handle_message(event):
+    if event.type == "message":
+        message = event.message.text
+        chat = message.lower().split(' ')
+
+
+        userid = ''
+        displayname = ''
+        try:
+            userid = event.source.user_id
+            profile = line_bot_api.get_profile(userid)
+            displayname = profile.display_name
+        except:
+            pass
+
+        user_data = NewDisplayName.query.filter_by(user_id=userid).first()
+
+        if user_data:
+            displayname = user_data.new_name + ","
+        else:
+            pass
+
+        if len(chat) < 4 and "akyat" in chat:
+            line_bot_api.reply_message(event.reply_token, ImageSendMessage(original_content_url="https://www.rhythmandrhyme.club/static/bot_photos/akyat/pickingyouupjesus.jpg", preview_image_url="https://www.rhythmandrhyme.club/static/bot_photos/akyat/pickingyouupjesus.jpg"))
+        elif message.lower() == "rr":
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=random.choice(conv.call)))
+
+
+        elif chat[0] ==  BOT_NAME and len(chat) > 2:
+
+            if '{} {}'.format(chat[1], chat[2]) == "check birthdays":
+                mnow = mtime.now().split(' ')[0]
+                current_index = list_of_month.index(mnow)
+
+                try:
+                    mnext = list_of_month[current_index + 1]
+                except:
+                    mnext = list_of_month[0]
+                allmembers = Members.query.all()
+                memlist = []
+                for a in allmembers:
+                    if a.birthday.split(' ')[0] == mnow and a.division != "Former Member":
+                        memlist.append("{} - {} ({}, fav song: {})".format(a.birthday, a.name, a.division, a.fav_song))
+                for b in allmembers:
+                    if b.birthday.split(' ')[0] == mnext and b.division != "Former Member":
+                        memlist.append("{} - {} ({}, fav song: {})".format(b.birthday, b.name, b.division, b.fav_song))
+
+                result = "Members who's celebrating birthday for this month and for next month:\n\n"
+                for c in memlist:
+                    result += "{}\n".format(c)
+                line_bot_api.reply_message(event.reply_token, TextSendMessage(text=result))
+
+            elif ' '.join(chat[1:3]) == "view notes":
+                note = Notes1.query.all()
+                notes = ""
+                for n in note:
+                    notes += (n.title + '\n')
+
+                line_bot_api.reply_message(event.reply_token, TextSendMessage(text=notes))
+
+            # remembering user new name:
+            elif ' '.join(chat[1:3]) == 'call me':
+                mess = event.message.text.split(' ')
+                new_name = ' '.join(mess[3:])
+                if userid == '' or displayname == '':
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text='Sorry, I only recognize people who add me as friend'))
+                else:
+                    response = save_new_display_name(userid, new_name)
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=response))
+
+            elif chat[1] == "@register_room":
+                room_name = ' '.join(chat[3:])
+                try:
+                    room_id = event.source.group_id
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=register_room_id(room_id, room_name, userid)))
+                except:
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text="{}  you are not in a room".format(displayname)))
+
+            elif chat[1] == "@edit-note":
+
+                body = ' '.join(chat[2:]).split("@ ")
+                title = body[0]
+                content = " ".join(body[1:])
+
+                note = Notes1.query.filter_by(title=title).first()
+                if note:
+                    #title = note.title
+                    note.content = content
+                    db.session.commit()
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text="done"))
+                else:
+                    line_bot_api.reply_message(event.reply_token, TextSendmaMessage(text="No data for {}".format(title)))
+
+            elif chat[1] == "@register_user":
+
+                line_bot_api.reply_message(event.reply_token, TextSendMessage(text=register_user(message.lower(), userid)))
+                # except:
+                #     line_bot_api.reply_message(event.reply_token, TextSendMessage(text="Command is restricted!"))
+
+            # learn command
+            elif chat[1] == 'train':
+                if ' '.join(chat[1:3]) == 'train chat:':
+                    cont = message.split(' ')
+                    content = ' '.join(cont[3:])
+                    result = learn_qa(content)
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=result))
+                elif ' '.join(chat[1:3]) == 'train chat':
+                    response = 'Wrong format!\n\nEx:\nrr learn chat: your chat or question/the response or answer'
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=response))
+                elif ' '.join(chat[2:4]) == 'hugot ni':
+                    result = learn_hugot_ni(message)
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=result))
+
+            elif chat[1] == '@save_note:':
+                text = message.replace('@save_note:', '')
+                #line_bot_api.reply_message(event.reply_token, TextSendMessage(text=text))
+                line_bot_api.reply_message(event.reply_token, TextSendMessage(text='{} {}'.format(displayname, save_note(text))))
+
+            # get command
+            elif chat[1] == "get":
+                #if chat[2:] == "@get_this_room_id":
+                  #  room_id = event.source.room_id
+                   # line_bot_api.reply_message(event.reply_token, TextSendMessage(text=room_id))
+                if chat[2] == "ids":
+                    room_id = event.source.user_id
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=room_id))
+                    #members_id = line_bot_api.get_room_ids(<room_id>)
+                if chat[2] == "video":
+                    link1 = "https://www.smule.com/p/32805871_3735532257"
+                    link2 = "https://www.rhythmandrhyme.club/static/bot_photos/akyat/pickingyouupjesus.jpg"
+                    line_bot_api.reply_message(event.reply_token, VideoSendMessage(original_content_url=link1, preview_image_url=link2))
+                if chat[2] == 'profile':
+                    group = event.userId
+                    # profile = line_bot_api.get_profile(user_id)
+
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=group))
+
+                if chat[2] == 'lyrics':
+                    result = get_lyrics(' '.join(chat[3:]))
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=result))
+
+                if chat[-1] == "badge":
+                    char = message.split(' ')
+                    name = ' '.join(char[2:-1])
+                    link = get_badge(name)
+                    if link != "None":
+                        #line_bot_api.reply_message(event.reply_token, TextSendMessage(text=link))
+                        line_bot_api.reply_message(event.reply_token, VideoSendMessage(original_content_url=link, preview_image_url='https://www.rhythmandrhyme.club/static/bot_photos/1600358671944.jpg'))
+                    else:
+                        line_bot_api.reply_message(event.reply_token, TextSendMessage(text='No badge file for {}!\n\nType "ar-ar get keynames list" command to get list of RR member\'s keynames.'.format(name)))
+                if chat[-1] == "link":
+                    char = message.split(' ')
+                    key = ' '.join(char[2:-1])
+                    link = get_rr_link(key)
+                    if link != "None":
+                        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=link))
+                    else:
+                        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="Invalid keyword"))
+
+                if chat[-1] == 'meaning':
+                    char = message.split(' ')
+                    key = char[2]
+                    word = get_word(key)
+                    if word != "None":
+                        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=word))
+                    else:
+                        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="Sorry, I forgot the meaning of {}".format(key)))
+
+                if chat[-1] == 'weather':
+                    char = message.split(' ')
+                    city = char[2]
+                    weather = get_weather(city)
+                    if weather != 'None':
+                        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=weather))
+                    else:
+                        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="Sorry, I can't recognize the given location"))
+                if chat[2] == "keynames" and chat[-1] == "list":
+                    result = get_keynames()
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=result))
+
+            elif chat[1] == "define":
+                word = get_word(chat[2])
+                if word != "None":
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=word))
+                else:
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=" Sorry, I forgot the meaning of {}".format(chat[2])))
+
+            elif "{} {}".format(chat[1], chat[2]) == "hugot ni":
+                hugotero = Hugot_Ni.query.filter_by(name=chat[-1]).first()
+                if hugotero:
+                    hugots = hugotero.hugot
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=hugots))
+                else:
+                    say = conv.walang_hugot().format(chat[-1])
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=say))
+
+            # 'https//www.rhythmandrhyme.club/static/member_badge/Sam_Camus-61-12-61-badge.jpg'))
+
+
+
+            elif chat[1] == 'discuss':
+                if len(chat) > 3:
+
+                    result = get_wiki(' '.join(chat[2:]))
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=result))
+                else:
+                    result = get_wiki(chat[2])
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=result))
+
+            elif ' '.join(chat[1:]) == "what's up":
+                reply = conv.get_story()
+                line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
+
+            else:
+                text = arithmetic(' '.join(chat[1:]))
+                if text != "None-1234":
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text='{} {}'.format(displayname, text)))
+                else:
+                    answer = get_qa_answer(' '.join(chat[1:]))
+                    if answer == "None-1234":
+                        line_bot_api.reply_message(event.reply_token, TextSendMessage(text='{} {}'.format(displayname, random.choice(conv.no_response))))
+                    else:
+                        answer = get_qa_answer(message.lower())
+                        check = answer.split(' ')
+                        #line_bot_api.reply_message(event.reply_token, TextSendMessage(text=answer))
+
+                        # if the response is a code. meaning the answer is stored yet in a protected file
+                        if check[0] == '@':
+                            # response is a text stored in command_response.py
+                            if check[1] == 'text':
+                                text = random.choice(cs.text[check[2]])
+                                line_bot_api.reply_message(event.reply_token, TextSendMessage(text='{} {}'.format(displayname, text)))
+                            # response is a link text of an image file stored in command_response.py
+                            elif check[1] == 'image':
+                                link = cs.image[answer.replace('@ image ', '')]
+                                line_bot_api.reply_message(event.reply_token, ImageSendMessage(original_content_url=link, preview_image_url=link))
+                            # response is a link text store in command_response.py
+                            elif check[1] == "link":
+                                try:
+                                    link = get_link_from_command(answer, event.source.group_id)
+                                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text='{} {}'.format(displayname, link)))
+                                except:
+                                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text='{} Information only available inside any RR authorized chat rooms'.format(displayname)))
+                            elif check[1] == 'note':
+                                try:
+                                    note = get_note(answer, event.source.group_id)
+                                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=note))
+                                except:
+                                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text='{} Information only available inside of any RR authorized chat rooms'.format(displayname)))
+                            else:
+                                pass
+
+                        elif answer != "None-1234":
+                            line_bot_api.reply_message(event.reply_token, TextSendMessage(text='{} {}'.format(displayname, answer)))
+                        else:
+                            pass
+
+                        # line_bot_api.reply_message(event.reply_token, TextSendMessage(text=answer))
+
+        elif message.lower() == 'rr quote':
+            result = get_quote()
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=result))
+
+        elif message.lower() == "rr hugot":
+            result = random.choice(hugot.random)
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=result))
+
+        elif chat[0] == 'rr' and len(chat) >1:
+            if (chat[1][0].isdigit and chat[1][-1].isdigit() or chat[1][0] == '(' or chat[2][-1] == ")"):
+                ans = arithmetic(chat[1])
+                if ans != "None-1234":
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text='{} {}'.format(displayname, ans)))
+
+
+        elif chat[0] == 'rr' and len(chat) == 2:
+            ans = arithmetic(chat[1])
+            if ans != "None-1234": # if math question
+                line_bot_api.reply_message(event.reply_token, TextSendMessage(text='{} {}'.format(displayname, ans)))
+
+            else: # if QA response
+                answer = get_qa_answer(message.lower())
+                check = answer.split(' ')
+               # line_bot_api.reply_message(event.reply_token, TextSendMessage(text=answer.split(' ')[1]))
+                if check[0] == '@': # if has command response
+                    if check[1] == 'text':
+                        reply = command_text_response()
+                    elif check[1] == 'image':
+                        link = cs.res[check[-1]]
+                        line_bot_api.reply_message(event.reply_token, ImageSendMessage(original_content_url=link, preview_image_url=link))
+                    else:
+                        pass
+
+                elif answer != "None-1234":
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text='{} {}'.format(displayname, answer)))
+                else:
+                    pass
+
+        else:
+            pass
+        #else:
+         #   answer = get_qa_answer(message.lower())
+         #   if answer != "None-1234":
+          #      line_bot_api.reply_message(event.reply_token, TextSendMessage(text=answer))
+         #   else:
+         #       hit = None
+         #       for c in conv.who_creator:
+         #           if fuzz.ratio(c, message.lower()) > 85:
+         #               hit = 1
+          #      if hit:
+          #          line_bot_api.reply_message(event.reply_token, ImageSendMessage(original_content_url="https://www.rhythmandrhyme.club/static/bot_photos/1599178746269~4.jpg", preview_image_url="https://www.rhythmandrhyme.club/static/bot_photos/1599178746269~4.jpg"))
+
+
+
+
+
+
+
