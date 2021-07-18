@@ -34,16 +34,13 @@
                 <div class="form-group">
                     {% if need_to_comment == True %}
                         <label class="form-label">Comment</label>
-                        <textarea name="comment" class="form-control">
-                            {{comment}}
-                        </textarea>
+                        <textarea rows="5" name="comment" class="form-control">{{comment}}</textarea>
                     {% else %}
                     {% endif %}
                     
                 </div>
                 <button class="btn btn-primary col-12 mt-4">Save Score</button>
             </form>
-            <p>{{link}}</p>
         </div>
     </div>
     <script>
