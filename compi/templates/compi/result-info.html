@@ -1,5 +1,50 @@
 {% extends "web/base.html" %}
 
 {% block content %}
-info
+    <h5 class="my-5">{{contender}} score info</h5>
+    <div class="card p-0, mt-5">
+        <div class="table-responsive">
+            <table class="table">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="text-center px-4">Judges</th>
+                        {% for criteria in criterias %}
+                            <th colspan='3' class='text-center'>{{criteria}}</th>
+                        {% endfor %}
+                        <th class='text-center px-4'>Total</th>
+                    <tr>
+                </thead>
+                <tbody>
+                    {% for r in data %}
+                        <tr>
+                            <th class="text-center">{{r.judge}}</th>
+                            {% for i in r.info  %}
+                                <td class="text-center">{{i.grade}}</td>
+                                <td class="text-center">{{i.percentage}}%</td>
+                                <td class="text-center">{{i.score}}</td>
+                            {% endfor %}
+                            <td class="text-center">{{r.total}}</td>
+                        </tr>
+                    {% endfor %}
+                    <tr>
+                        <th class="text-center">Average</th>
+                        {% for s in spacing %}
+                            <td colspan='3'></td>
+                        {% endfor %}
+                        <th class="text-center">{{total}}</th>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <h6 class="form-label m-3">Comments:</h6>
+
+    {% for comment in comments %}
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <p>{{comment.judge.name}}</p>
+                <p>{{comment.comment}}</p>
+            </div>
+        </div>
+    {% endfor %}
 {% endblock content %}

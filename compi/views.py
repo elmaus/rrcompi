@@ -374,7 +374,8 @@ def competition_result(request, id):
                 'name':contender.smule_name,
                 'average':round(average / len(judges), 2),
                 'judges_score':judges_scores,
-                'entry_id':entry.id
+                'entry_id':entry.id,
+                'immage':contender.immage.url
             })
 
     highest = None
@@ -413,35 +414,53 @@ def result_info(request, entry_id):
     entry = Entry.objects.filter(id=entry_id).first()
     comp = entry.competition
     judges = Judge.objects.filter(competition=comp)
-    contender = entry.contender
+    contender = entry.contender.smule_name
     scores = Score.objects.filter(entry=entry)
 
     data = []
+    criterias = []
     for judge in judges:
         judge_scores = Score.objects.filter(entry=entry, judge=judge)
         all_score = []
         for score in judge_scores:
+            if score.criteria.name not in criterias:
+                criterias.append(score.criteria.name)
             all_score.append({
-                'criteria':score.criteria.name,
-                'percentage':score.criteria.percentage,
                 'grade':score.score,
-                'score':score.criteria.percentage / 100 * score.score,
+                'percentage':score.criteria.percentage,
+                'score':round(score.criteria.percentage / 100 * score.score, 2)
             })
         total = 0
         for all in all_score:
             total += all['score']
         data.append({
             'info':all_score,
-            'total':total
+            'total':total,
+            'judge':judge.name
         })
     grand_total = 0
     for d in data:
         grand_total += d['total']
     
-    data.appned(round(grand_total / len(data), 2))
+    spacing = []
+    for i in criterias:
+        spacing.append('-')
 
-    # data[0] = information
-    # data[1] = average
+    all_comments = Comment.objects.filter(entry=entry)
+    comments = []
+    for comment in all_comments:
+        if comment.comment != None:
+            comments.append(comment)
+
+    context = {
+        'data':data,
+        'criterias':criterias,
+        'spacing':spacing,
+        'total':round(grand_total / len(judges), 2),
+        'comments':comments,
+        'contender':contender
+    }
+
             
-    return render(request, 'compi/result-info.html',  {'data':data})
+    return render(request, 'compi/result-info.html',  context)
 
